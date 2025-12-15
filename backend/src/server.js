@@ -16,6 +16,8 @@ import { startAIScheduler } from "./modules/scheduler/aiScheduler.js";
 
 import bullBoard from "./dashboard/bullboard.js";
 import dashboardAuth from "../middleware/bullmq.middleware.js";
+import dashboardRoutes from "./routes/dashboard.routes.js";
+
 
 
 const app = express();
@@ -28,6 +30,7 @@ app.get("/", (req, res) => {
 
 app.use("/ai", aiRoute);
 app.use("/api", fetcherRoute);
+app.use("/api/dashboard", dashboardRoutes);
 app.use('/admin/queues', dashboardAuth,bullBoard.getRouter());
 
 
