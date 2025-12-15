@@ -2,28 +2,43 @@ import { NavLink } from "react-router-dom";
 
 export default function Sidebar() {
   const navItems = [
-    { label: "Dashboard", path: "/" },
-    { label: "Fetcher", path: "/fetcher" },
-    { label: "FetcherRecords", path: "/records" },
-    { label: "AI Posts", path: "/posts" },
-    { label: "LinkedIn", path: "/linkedin" },
-    { label: "Settings", path: "/settings" },
+    { label: "Dashboard", path: "/", icon: "📊" },
+    { label: "Fetcher", path: "/fetcher", icon: "🔄" },
+    { label: "Records", path: "/records", icon: "📋" },
+    { label: "AI Posts", path: "/posts", icon: "✨" },
+    { label: "LinkedIn", path: "/linkedin", icon: "🔗" },
+    { label: "Queue", path: "/queue", icon: "📦" },
+    { label: "Settings", path: "/settings", icon: "⚙️" },
   ];
 
   return (
-    <aside className="w-64 h-screen bg-gray-900 text-white p-4">
-      <h2 className="text-xl font-bold mb-6">LinkedIn Bot</h2>
-      <nav className="flex flex-col gap-3">
+    <aside
+      className="w-64 min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 
+                 text-white p-6 border-r border-slate-700 shadow-xl"
+    >
+      <div className="mb-8 pb-6 border-b border-slate-700">
+        <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 
+                       bg-clip-text text-transparent">
+          Bot Control
+        </h2>
+        <p className="text-sm text-slate-400 mt-1">Manage your automation</p>
+      </div>
+
+      <nav className="flex flex-col gap-2">
         {navItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             className={({ isActive }) =>
-              `p-2 rounded-md transition ${
-                isActive ? "bg-blue-600" : "hover:bg-gray-700"
+              `px-4 py-3 rounded-lg transition-all duration-300 flex items-center gap-3 font-medium
+              ${
+                isActive
+                  ? "bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg"
+                  : "text-slate-300 hover:bg-slate-700/50 hover:text-white"
               }`
             }
           >
+            <span className="text-lg">{item.icon}</span>
             {item.label}
           </NavLink>
         ))}

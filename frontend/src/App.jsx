@@ -3,6 +3,7 @@ import Layout from "./components/layout/Layout.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Fetcher from "./pages/Fetcher.jsx";
 import FetcherList from "./pages/FetcherList";
+import QueueMonitor from "./pages/QueueMonitor.jsx";
 
 function App() {
   return (
@@ -12,6 +13,8 @@ function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/fetcher" element={<Fetcher />} />
           <Route path="/records" element={<FetcherList />} />
+          <Route path="/queue" element={<QueueMonitor />} />
+          <Route path="*" element={<Dashboard />} />
         </Routes>
       </Layout>
     </BrowserRouter>

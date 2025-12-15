@@ -6,11 +6,11 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 const sources = [
-  { id: "github", label: "GitHub" },
-  { id: "devto", label: "Dev.to" },
-  { id: "medium", label: "Medium" },
-  { id: "npm", label: "NPM" },
-  { id: "hackernews", label: "Hacker News" },
+  { id: "github", label: "GitHub", icon: "🐙", color: "from-gray-700 to-gray-900", lightBg: "from-gray-50 to-gray-100" },
+  { id: "devto", label: "Dev.to", icon: "📝", color: "from-black to-gray-900", lightBg: "from-slate-50 to-slate-100" },
+  { id: "medium", label: "Medium", icon: "📰", color: "from-slate-800 to-slate-900", lightBg: "from-slate-50 to-slate-100" },
+  { id: "npm", label: "NPM", icon: "📦", color: "from-red-600 to-red-700", lightBg: "from-red-50 to-red-100" },
+  { id: "hackernews", label: "Hacker News", icon: "🔥", color: "from-orange-500 to-orange-600", lightBg: "from-orange-50 to-orange-100" },
 ];
 
 export default function Fetcher() {
@@ -18,49 +18,78 @@ export default function Fetcher() {
 
   const wait = (ms) => new Promise((res) => setTimeout(res, ms));
 
-  const handleFetch = async (source) => {
-    setLoadingSource(source);
+const handleFetch = async (source) => {
+  setLoadingSource(source);
 
-    try {
-      const res = await axios.post(`http://localhost:5000/api/${source}`);
+  try {
+    const res = await axios.post(`/api/${source}`);
 
-      // give UI time to update
-      await wait(250);
-
-      toast.success(res.data.message || "Fetch started");
-    } catch (error) {
-      await wait(150);
-      toast.error(error.response?.data?.message || "Something went wrong");
-    }
+    await wait(350); // happens before state reset
 
     setLoadingSource(null);
-  };
+    toast.success(res.data.message || "Fetch started");
+  } catch (error) {
+    await wait(300);
+
+    setLoadingSource(null);
+    toast.error(error.response?.data?.message || "Something went wrong");
+  }
+};
 
   return (
-    <div className="grid md:grid-cols-3 gap-6 p-6">
-      {sources.map((s) => (
-        <Card key={s.id} className="shadow-md border">
-          <CardHeader>
-            <CardTitle>{s.label}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Button
-              className="w-full"
-              onClick={() => handleFetch(s.id)}
-              disabled={loadingSource === s.id}
-            >
-              {loadingSource === s.id ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Fetching...
-                </>
-              ) : (
-                "Fetch Now"
-              )}
-            </Button>
-          </CardContent>
-        </Card>
-      ))}
+    <div className="space-y-8">
+      <div className="flex flex-col gap-2">
+        <h1 className="text-4xl font-bold text-slate-900">Content Sources</h1>
+        <p className="text-slate-500">Fetch articles from multiple platforms with a single click</p>
+      </div>
+
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {sources.map((s) => (
+          <Card key={s.id} className="overflow-hidden border-0 shadow-lg hover:shadow-2xl transition-all duration-300 bg-white group">
+            <div className={`h-1 bg-gradient-to-r ${s.color}`}></div>
+            <CardHeader>
+              <div className="flex items-center gap-3 mb-4">
+                <div className={`text-4xl p-3 rounded-xl bg-gradient-to-br ${s.lightBg}`}>
+                  {s.icon}
+                </div>
+                <div>
+                  <CardTitle className="text-slate-900">{s.label}</CardTitle>
+                  <p className="text-xs text-slate-400 mt-1">Fetch trending content</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Button
+                className={`w-full bg-gradient-to-r ${s.color} hover:shadow-lg transition-all duration-300`}
+                onClick={() => handleFetch(s.id)}
+                disabled={loadingSource === s.id}
+              >
+                {loadingSource === s.id ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Fetching...
+                  </>
+                ) : (
+                  <>Start Fetch</>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-indigo-50">
+        <CardHeader>
+          <CardTitle className="text-slate-900">💡 Quick Tips</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ul className="space-y-2 text-sm text-slate-600">
+            <li>✓ Click any source to fetch latest articles automatically</li>
+            <li>✓ Articles are stored in the database and ready for AI processing</li>
+            <li>✓ Check the Records tab to view all fetched content</li>
+          </ul>
+        </CardContent>
+      </Card>
     </div>
   );
 }
