@@ -1,6 +1,5 @@
 import { cn } from "@/lib/utils";
-
-export default function Skeleton({
+ function Skeleton({
   className = "",
   ...props
 }) {
@@ -14,3 +13,4 @@ export default function Skeleton({
     />
   );
 }
+export {Skeleton}
