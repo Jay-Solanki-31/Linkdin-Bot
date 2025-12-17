@@ -47,7 +47,7 @@ async function start() {
 
     // start schedulers
     startFetchScheduler(); 
-    startAIScheduler("*/15 * * * *"); // run AI scheduler every 15 minutes
+    startAIScheduler(); 
 
     app.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);
