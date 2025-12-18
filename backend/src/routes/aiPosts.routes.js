@@ -1,15 +1,7 @@
 import express from "express";
-import FetchedContent from "../models/fetchedContent.model.js";
+import GeneratedPost from "../models/generatedPost.model.js";
 
 const router = express.Router();
-
-const resolveAIStatus = (doc) => {
-  if (doc.aiError) return "failed";
-  if (doc.processing) return "processing";
-  if (doc.aiGenerated) return "generated";
-  if (doc.isQueued) return "queued";
-  return "pending";
-};
 
 router.get("/", async (req, res) => {
   try {
@@ -17,34 +9,25 @@ router.get("/", async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit) || 10, 50);
     const skip = (page - 1) * limit;
 
-    const filter = {
-      $or: [
-        { aiGenerated: true },
-        { isQueued: true },
-        { processing: true },
-        { aiError: { $ne: null } },
-      ],
-    };
-
     const [items, total] = await Promise.all([
-      FetchedContent.find(filter)
+      GeneratedPost.find()
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .select("title description aiGenerated isQueued processing aiError createdAt"),
-      FetchedContent.countDocuments(filter),
+        .populate("articleId", "title source"),
+      GeneratedPost.countDocuments(),
     ]);
 
-    const data = items.map(doc => ({
-      _id: doc._id,
-      title: doc.title,
-      description: doc.description,
-      createdAt: doc.createdAt,
-      status: resolveAIStatus(doc),
-    }));
-
     res.json({
-      data,
+      data: items.map(post => ({
+        _id: post._id,
+        title: post.title,
+        text: post.text,         
+        url: post.url,
+        source: post.source,
+        status: post.status,
+        createdAt: post.createdAt,
+      })),
       pagination: {
         page,
         limit,

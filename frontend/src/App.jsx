@@ -4,7 +4,7 @@ import Dashboard from "./pages/Dashboard.jsx";
 import Fetcher from "./pages/Fetcher.jsx";
 import FetcherList from "./pages/FetcherList.jsx";
 import QueueMonitor from "./pages/QueueMonitor.jsx";
-import aipost from "./pages/AI.jsx";
+import  AIPosts from "./pages/AI.jsx";
 
 function App() {
   return (
@@ -15,7 +15,7 @@ function App() {
           <Route path="/fetcher" element={<Fetcher />} />
           <Route path="/records" element={<FetcherList />} />
           <Route path="/queue" element={<QueueMonitor />} />
-          <Route path="/posts" element={<aipost />} />
+          <Route path="/posts" element={< AIPosts />} />
           <Route path="*" element={<Dashboard />} />
         </Routes>
       </Layout>

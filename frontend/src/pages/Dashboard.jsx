@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, Zap, Activity } from "lucide-react";
+import {DashboardSkeleton} from "@/components/PostSkeleton";
 
 export default function Dashboard() {
   const [data, setData] = useState(null);
@@ -9,7 +10,7 @@ export default function Dashboard() {
 
   const loadDashboard = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/dashboard");
+      const res = await axios.get("/api/dashboard");
       setData(res.data);
       setLoading(false);
     } catch (err) {
@@ -26,7 +27,7 @@ export default function Dashboard() {
 
   if (loading || !data) {
     return (
-      <div className="p-10 text-xl text-slate-500">Loading dashboard...</div>
+      < DashboardSkeleton />
     );
   }
 
@@ -193,7 +194,7 @@ export default function Dashboard() {
               </div>
 
               {/* Last run */}
-              <div className="text-sm text-slate-600 mt-4">
+              {/* <div className="text-sm text-slate-600 mt-4">
                 <p>
                   <strong>Last Run:</strong>{" "}
                   {new Date(data.system.lastRun).toLocaleString()}
@@ -204,7 +205,7 @@ export default function Dashboard() {
                     ? new Date(data.system.nextRun).toLocaleString()
                     : "Calculating..."}
                 </p>
-              </div>
+              </div> */}
             </div>
           </CardContent>
         </Card>
