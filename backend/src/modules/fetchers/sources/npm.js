@@ -1,5 +1,3 @@
-// src/modules/fetchers/sources/npm.js
-
 import axios from "axios";
 export default async function fetchNpm() {
   try {

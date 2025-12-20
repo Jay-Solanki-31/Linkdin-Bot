@@ -1,4 +1,3 @@
-// src/routes/ai.routes.js
 import express from "express";
 import aiService from "../modules/ai/ai.service.js";
 

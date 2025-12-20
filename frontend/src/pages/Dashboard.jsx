@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, Zap, Activity } from "lucide-react";
-import {DashboardSkeleton} from "@/components/PostSkeleton";
+import {DashboardSkeleton} from "@/components/ui/PostSkeleton";
 
 export default function Dashboard() {
   const [data, setData] = useState(null);
@@ -63,7 +63,7 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
         <div className="flex-1">
-          <h1 className="text-4xl font-bold text-slate-900">Dashboard</h1>
+          <h1 className="text-4xl font-bold text-foreground">Dashboard</h1>
           <p className="text-slate-500 mt-2">
             Welcome back! Here's your automation overview
           </p>
@@ -77,7 +77,7 @@ export default function Dashboard() {
           return (
             <Card
               key={idx}
-              className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white"
+              className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-background"
             >
               <div className={`h-2 bg-gradient-to-r ${stat.gradient}`}></div>
 
@@ -111,7 +111,7 @@ export default function Dashboard() {
         {/* RECENT ACTIVITY */}
         <Card className="border-0 shadow-lg bg-gradient-to-br from-slate-50 to-white">
           <CardHeader>
-            <CardTitle className="text-slate-900">Recent Activity</CardTitle>
+            <CardTitle className="text-foreground">Recent Activity</CardTitle>
           </CardHeader>
 
           <CardContent>
@@ -134,7 +134,7 @@ export default function Dashboard() {
         {/* SYSTEM HEALTH */}
         <Card className="border-0 shadow-lg bg-gradient-to-br from-slate-50 to-white">
           <CardHeader>
-            <CardTitle className="text-slate-900">System Health</CardTitle>
+            <CardTitle className="text-foreground">System Health</CardTitle>
           </CardHeader>
 
           <CardContent>

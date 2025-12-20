@@ -1,4 +1,3 @@
-// src/controller/fetcher.controller.js
 
 import { fetcherQueue } from "../queue/fetcher.queue.js";
 import FetchedContent from "../models/fetchedContent.model.js";

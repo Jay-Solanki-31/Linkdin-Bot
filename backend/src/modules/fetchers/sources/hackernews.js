@@ -1,4 +1,3 @@
-// src/modules/fetchers/sources/hackernews.js
 import axios from "axios";
 export default async function fetchHN() {
   try {

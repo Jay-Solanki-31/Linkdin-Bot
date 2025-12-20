@@ -1,4 +1,3 @@
-// src/services/generatedPostService.js
 import GeneratedPost from "../models/generatedPost.model.js";
 
 class GeneratedPostService {

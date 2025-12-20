@@ -1,4 +1,3 @@
-// src/queue/fetcher.queue.js
 import { Queue } from "bullmq";
 import { redisConnection } from "./connection.js";
 

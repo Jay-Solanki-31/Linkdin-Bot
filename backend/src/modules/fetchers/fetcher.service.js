@@ -1,4 +1,3 @@
-// src/modules/fetchers/fetcher.service.js
 import devto from "./sources/devto.js";
 import medium from "./sources/medium.js";
 import fetchGithub from "./sources/github.js";

@@ -1,4 +1,3 @@
-// src/modules/fetchers/sources/medium.js
 import Parser from "rss-parser";
 const parser = new Parser();
 

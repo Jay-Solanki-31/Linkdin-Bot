@@ -1,4 +1,3 @@
-// src/queue/connection.js
 import { Redis } from "ioredis";
 import dotenv from "dotenv";
 dotenv.config();

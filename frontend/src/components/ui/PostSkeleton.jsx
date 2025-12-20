@@ -24,7 +24,7 @@ function DashboardSkeleton() {
       {/* Stats cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[1, 2, 3].map((i) => (
-          <Card key={i} className="border-0 shadow-lg bg-white">
+          <Card key={i} className="border-0 shadow-lg bg-background">
             <div className="h-2 bg-slate-200" />
             <CardHeader className="pb-3">
               <Skeleton className="h-4 w-40" />
@@ -40,7 +40,7 @@ function DashboardSkeleton() {
       {/* Bottom panels */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {[1, 2].map((i) => (
-          <Card key={i} className="border-0 shadow-lg bg-white p-6">
+          <Card key={i} className="border-0 shadow-lg bg-background p-6">
             <Skeleton className="h-5 w-40 mb-4" />
             <div className="space-y-3">
               {[1, 2, 3, 4].map((j) => (

@@ -1,10 +1,9 @@
-// src/routes/fetcher.routes.js
 import express from "express";
 import { startFetch, getFetchedData } from "../controller/fetcher.controller.js";
 
 const router = express.Router();
 
-// Start fetch: /fetch/github
+// Start fetch Job
 router.post("/:source", startFetch);
 
 // Get all fetched content

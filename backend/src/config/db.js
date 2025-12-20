@@ -1,4 +1,3 @@
-// src/config/db.js
 
 import dotenv from "dotenv";
 dotenv.config();
@@ -13,14 +12,13 @@ const connectDB = async () => {
   if (isConnected) return;
 
   const uri = process.env.MONGO_URI;
-  console.log(uri);
   if (!uri) {
     throw new Error("MONGO_URI not defined in .env");
   }
 
   try {
     await mongoose.connect(uri, {
-      // timeouts 
+      // timeout set 
       serverSelectionTimeoutMS: 10000,
       socketTimeoutMS: 45000,
       connectTimeoutMS: 10000,

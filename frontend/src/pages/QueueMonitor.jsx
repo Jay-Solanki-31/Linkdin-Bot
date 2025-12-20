@@ -8,8 +8,8 @@ function QueueMonitorSkeleton() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {[1, 2, 3].map((i) => (
-          <Card key={i} className="border-0 shadow-lg bg-white">
+        {[1, 2, 3].map((i) => ( 
+          <Card key={i} className="border-0 shadow-lg bg-background">
             <CardHeader className="pb-3">
               <Skeleton className="h-4 w-24" />
             </CardHeader>
@@ -22,7 +22,7 @@ function QueueMonitorSkeleton() {
       </div>
 
       {[1, 2].map((i) => (
-        <Card key={i} className="border-0 shadow-lg bg-white p-6">
+        <Card key={i} className="border-0 shadow-lg bg-background p-6">
           <Skeleton className="h-5 w-48 mb-6" />
           <div className="grid grid-cols-4 gap-4">
             {[1, 2, 3, 4].map((j) => (
@@ -90,7 +90,7 @@ export default function QueueMonitor() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-4xl font-bold text-slate-900">Queue Monitor</h1>
+        <h1 className="text-4xl font-bold text-foreground">Queue Monitor</h1>
         <p className="text-slate-500 mt-2">
           Live BullMQ queue activity and performance
         </p>
@@ -98,7 +98,7 @@ export default function QueueMonitor() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="border-0 shadow-lg bg-white">
+        <Card className="border-0 shadow-lg bg-background">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm uppercase text-slate-600">
@@ -113,7 +113,7 @@ export default function QueueMonitor() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg bg-white">
+        <Card className="border-0 shadow-lg bg-background">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm uppercase text-slate-600">
@@ -128,7 +128,7 @@ export default function QueueMonitor() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg bg-white">
+        <Card className="border-0 shadow-lg bg-background">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm uppercase text-slate-600">
@@ -154,7 +154,7 @@ export default function QueueMonitor() {
           return (
             <Card
               key={idx}
-              className="border-0 shadow-lg bg-white overflow-hidden"
+              className="border-0 shadow-lg bg-background overflow-hidden"
             >
               <div
                 className={`h-1 ${
@@ -167,14 +167,14 @@ export default function QueueMonitor() {
               <CardContent className="pt-6">
                 <div className="flex justify-between mb-6">
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900">
+                    <h3 className="text-lg font-bold text-foreground">
                       {queue.name}
                     </h3>
                     <Badge
                       className={`mt-2 ${
                         queue.status === "running"
                           ? "bg-green-600"
-                          : "bg-slate-500"
+                          : "bg-muted0"
                       } text-white`}
                     >
                       {queue.status === "running" ? "🟢 Running" : "🔴 Idle"}

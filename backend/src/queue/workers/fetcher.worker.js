@@ -1,4 +1,3 @@
-// src/queue/workers/fetcher.worker.js
 import dotenv from "dotenv";
 dotenv.config();
 

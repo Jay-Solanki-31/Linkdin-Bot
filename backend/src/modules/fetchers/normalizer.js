@@ -1,4 +1,3 @@
-// src/modules/fetchers/normalizer.js
 
 export function normalizeArticle(raw, source) {
   if (!raw) return null;

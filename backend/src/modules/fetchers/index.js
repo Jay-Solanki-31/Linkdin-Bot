@@ -1,4 +1,3 @@
-// src/modules/fetchers/index.js
 
 import * as devto from "./sources/devto.js";
 import * as hackernews from "./sources/hackernews.js";

@@ -1,4 +1,3 @@
-// src/models/generatedPost.model.js
 import mongoose from "mongoose";
 
 const GeneratedPostSchema = new mongoose.Schema({

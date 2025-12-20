@@ -1,4 +1,3 @@
-// src/modules/fetchers/sources/devto.js
 import axios from "axios";
 
 export default async function fetch({ topic = "node" } = {}) {

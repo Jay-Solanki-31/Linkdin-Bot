@@ -1,4 +1,3 @@
-// src/queue/jobTypes.js
 export const JOB_TYPES = {
   FETCH_CONTENT: "FETCH_CONTENT",
   GENERATE_POST: "GENERATE_POST",

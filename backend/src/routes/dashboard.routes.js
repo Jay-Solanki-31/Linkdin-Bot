@@ -7,7 +7,7 @@ import { redisConnection } from "../queue/connection.js";
 
 const router = express.Router();
 
-/* ---------------- Queue Events ---------------- */
+/*  Queue Events  */
 
 const fetcherEvents = new QueueEvents("fetcher-queue", {
   connection: redisConnection.connection,
@@ -19,7 +19,7 @@ fetcherEvents.on("completed", () => {
   NEXT_RUN = new Date(Date.now() + 5 * 60 * 1000);
 });
 
-/* ---------------- Route ---------------- */
+/*  Route  */
 
 router.get("/", async (req, res) => {
   try {

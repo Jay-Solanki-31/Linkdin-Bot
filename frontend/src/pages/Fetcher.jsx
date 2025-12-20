@@ -24,7 +24,7 @@ const handleFetch = async (source) => {
   try {
     const res = await axios.post(`/api/${source}`);
 
-    await wait(350); // happens before state reset
+    await wait(350); 
 
     setLoadingSource(null);
     toast.success(res.data.message || "Fetch started");
@@ -39,13 +39,13 @@ const handleFetch = async (source) => {
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-2">
-        <h1 className="text-4xl font-bold text-slate-900">Content Sources</h1>
+        <h1 className="text-4xl font-bold text-foreground">Content Sources</h1>
         <p className="text-slate-500">Fetch articles from multiple platforms with a single click</p>
       </div>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {sources.map((s) => (
-          <Card key={s.id} className="overflow-hidden border-0 shadow-lg hover:shadow-2xl transition-all duration-300 bg-white group">
+          <Card key={s.id} className="overflow-hidden border-0 shadow-lg hover:shadow-2xl transition-all duration-300 bg-background group">
             <div className={`h-1 bg-gradient-to-r ${s.color}`}></div>
             <CardHeader>
               <div className="flex items-center gap-3 mb-4">
@@ -53,7 +53,7 @@ const handleFetch = async (source) => {
                   {s.icon}
                 </div>
                 <div>
-                  <CardTitle className="text-slate-900">{s.label}</CardTitle>
+                  <CardTitle className="text-foreground">{s.label}</CardTitle>
                   <p className="text-xs text-slate-400 mt-1">Fetch trending content</p>
                 </div>
               </div>
@@ -80,7 +80,7 @@ const handleFetch = async (source) => {
 
       <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-indigo-50">
         <CardHeader>
-          <CardTitle className="text-slate-900">💡 Quick Tips</CardTitle>
+          <CardTitle className="text-foreground">💡 Quick Tips</CardTitle>
         </CardHeader>
         <CardContent>
           <ul className="space-y-2 text-sm text-slate-600">

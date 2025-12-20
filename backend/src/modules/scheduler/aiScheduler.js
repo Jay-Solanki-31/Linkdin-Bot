@@ -1,4 +1,3 @@
-// src/modules/scheduler/aiScheduler.js
 import cron from "node-cron";
 import FetchedContent from "../../models/fetchedContent.model.js";
 import { addAIJob } from "../../queue/ai.queue.js";

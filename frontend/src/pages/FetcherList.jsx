@@ -12,7 +12,7 @@ export default function FetcherList() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  // pagination states
+  // pagination 
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
@@ -32,7 +32,7 @@ export default function FetcherList() {
     return () => clearInterval(interval);
   }, []);
 
-  // search filter
+  // search filter 
   const filtered = records.filter(
     (r) =>
       r.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -50,12 +50,12 @@ export default function FetcherList() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2 mb-8">
-        <h1 className="text-4xl font-bold text-slate-900">Fetched Records</h1>
+        <h1 className="text-4xl font-bold text-foreground">Fetched Records</h1>
         <p className="text-slate-500">View and manage all collected articles</p>
       </div>
-      <Card className="border-0 shadow-lg bg-white">
-        <CardHeader className="border-b border-slate-200">
-          <CardTitle className="text-slate-900">All Records</CardTitle>
+      <Card className="border-0 shadow-lg bg-background">
+        <CardHeader className="border-b border-border">
+          <CardTitle className="text-foreground">All Records</CardTitle>
           <Input
             placeholder="🔍 Search by title or source..."
             value={search}
@@ -79,19 +79,19 @@ export default function FetcherList() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200 hover:bg-slate-100">
-                      <TableHead className="font-semibold text-slate-900">Title</TableHead>
-                      <TableHead className="font-semibold text-slate-900">Source</TableHead>
-                      <TableHead className="font-semibold text-slate-900">AI Generated</TableHead>
-                      <TableHead className="font-semibold text-slate-900">Queued</TableHead>
-                      <TableHead className="font-semibold text-slate-900">Date</TableHead>
+                    <TableRow className="bg-gradient-to-r from-slate-50 to-slate-100 border-b border-border hover:bg-slate-100">
+                      <TableHead className="font-semibold text-foreground">Title</TableHead>
+                      <TableHead className="font-semibold text-foreground">Source</TableHead>
+                      <TableHead className="font-semibold text-foreground">AI Generated</TableHead>
+                      <TableHead className="font-semibold text-foreground">Queued</TableHead>
+                      <TableHead className="font-semibold text-foreground">Date</TableHead>
                     </TableRow>
                   </TableHeader>
 
                   <TableBody>
                     {currentPageData.map((item, idx) => (
-                      <TableRow key={item._id} className={`border-b border-slate-100 hover:bg-slate-50 transition ${idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}`}>
-                        <TableCell className="font-semibold text-slate-900 max-w-sm truncate">{item.title}</TableCell>
+                      <TableRow key={item._id} className={`border-b border-slate-100 hover:bg-muted transition ${idx % 2 === 0 ? "bg-background" : "bg-muted/50"}`}>
+                        <TableCell className="font-semibold text-foreground max-w-sm truncate">{item.title}</TableCell>
 
                         <TableCell>
                           <Badge className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">{item.source}</Badge>
@@ -123,7 +123,7 @@ export default function FetcherList() {
               </div>
 
               {/* Pagination Controls */}
-              <div className="flex items-center justify-between mt-8 pt-6 border-t border-slate-200">
+              <div className="flex items-center justify-between mt-8 pt-6 border-t border-border">
                 <Button
                   onClick={prevPage}
                   disabled={page === 1}
@@ -160,7 +160,7 @@ export default function FetcherList() {
                 </Button>
               </div>
 
-              <div className="mt-6 p-4 bg-slate-50 rounded-lg border border-slate-200 text-sm text-slate-600">
+              <div className="mt-6 p-4 bg-muted rounded-lg border border-border text-sm text-slate-600">
                 📊 Showing {currentPageData.length} of {filtered.length} records (Page {page} of {totalPages})
               </div>
             </>

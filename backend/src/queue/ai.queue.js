@@ -1,4 +1,3 @@
-// src/queue/ai.queue.js
 import { Queue } from "bullmq";
 import { JOB_TYPES } from "./jobTypes.js";
 import { redisConnection } from "./connection.js";

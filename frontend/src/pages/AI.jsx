@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { PostSkeleton } from "@/components/PostSkeleton";
+import { PostSkeleton } from "@/components/ui/PostSkeleton";
 
 export default function AIPosts() {
   const [posts, setPosts] = useState([]);
@@ -18,10 +18,11 @@ export default function AIPosts() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
 
     fetch(`/api/ai-posts?page=${page}&limit=5`)
-      .then((res) => res.json())
+      .then((res) => res.json())   
       .then((data) => {
         setPosts(data.data || []);
         setMeta(data.pagination);
@@ -113,7 +114,7 @@ export default function AIPosts() {
       {/* Modal */}
       {selectedPost && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-2xl w-full shadow-xl relative">
+          <div className="bg-background rounded-xl max-w-2xl w-full shadow-xl relative">
             <button
               onClick={() => setSelectedPost(null)}
               className="absolute top-3 right-3 text-slate-500 hover:text-slate-800"

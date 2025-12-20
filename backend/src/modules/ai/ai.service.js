@@ -1,11 +1,10 @@
-// src/modules/ai/ai.service.js
 import generateAIResponse from "../../services/gemini.js";
 import generatedPostService from "../../services/generatePostservice.js";
 import FetchedContent from "../../models/fetchedContent.model.js";
 import logger from "../../utils/logger.js";
 
 class AIService {
-  // process a single content id (Used by worker)
+  // process a single content id Used by worker
   async generateForContent(contentId) {
     const item = await FetchedContent.findById(contentId);
     if (!item) {
@@ -21,13 +20,14 @@ class AIService {
       return null;
     }
 
+    // set gemini prompt to generate post
     const prompt = `
 Write a single LinkedIn post based *only* on the following information.
 
 **Follow these refined rules strictly:**
 
 * **Tone:** Professional, engaging, and conversational. The post should sound like a person sharing a valuable discovery or insight, not an advertisement.
-* **Structure & Length:** Exactly one version. The body must consist of **3 to 4 impactful sentences** maximum.
+* **Structure & Length:** Exactly one version. The body must consist of **4 to 5 impactful sentences** maximum.
 * **Content Integration:** The post must summarize the main value/insight from the ${item.title} and ${item.description} to encourage reading.
 * **Engagement Element:** Include exactly **one relevant emoji** (not at the start, use it to highlight a key concept).
 * **Source Credit (Mandatory):** Mention the ${item.source} *naturally* within one of the sentences to credit the origin.
@@ -47,7 +47,6 @@ URL: ${item.url}
       text = await generateAIResponse(prompt);
     } catch (err) {
       logger.error("Gemini API Error", err?.message || err);
-      // bubble up the error so worker's retry/backoff occurs
       throw err;
     }
 
@@ -59,7 +58,6 @@ URL: ${item.url}
     }
 
     try {
-      // save generated post
       await generatedPostService.save(item._id, {
         title: item.title,
         text,
@@ -76,7 +74,7 @@ URL: ${item.url}
       return text;
     } catch (err) {
       logger.error("AIService: save error", err?.message || err);
-      // persist error, release locks
+      // release locks
       await FetchedContent.findByIdAndUpdate(contentId, {
         $set: { processing: false, processingAt: null, isQueued: false, aiError: err.message?.slice(0, 512) || "save_error" }
       });
@@ -84,11 +82,11 @@ URL: ${item.url}
     }
   }
 
-  // convenience: generate next unprocessed content (keeps previous behavior for routes)
+  // generate next unprocessed content keeps previous behavior for routes
   async generateForNext() {
     const item = await FetchedContent.findOne({ aiGenerated: false, isQueued: { $ne: true }, processing: { $ne: true } });
     if (!item) return { status: "empty" };
-    // mark queued (so scheduler doesn't requeue)
+    // mark queued so scheduler doesn't requeue 
     await FetchedContent.findByIdAndUpdate(item._id, { $set: { isQueued: true } });
     const text = await this.generateForContent(item._id.toString());
     return { id: item._id, text };
