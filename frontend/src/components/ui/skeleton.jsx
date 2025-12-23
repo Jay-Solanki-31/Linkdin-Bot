@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
   return (
     <div
       className={cn(
-        "animate-pulse rounded-md bg-slate-200 dark:bg-muted",
+        "animate-pulse rounded-md bg-muted dark:bg-muted",
         className
       )}
       {...props}

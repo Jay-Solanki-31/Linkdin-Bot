@@ -91,7 +91,7 @@ export default function QueueMonitor() {
       {/* Header */}
       <div>
         <h1 className="text-4xl font-bold text-foreground">Queue Monitor</h1>
-        <p className="text-slate-500 mt-2">
+        <p className="bg-muted mt-2">
           Live BullMQ queue activity and performance
         </p>
       </div>
@@ -101,7 +101,7 @@ export default function QueueMonitor() {
         <Card className="border-0 shadow-lg bg-background">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm uppercase text-slate-600">
+              <CardTitle className="text-sm uppercase text-muted-foreground">
                 Total Jobs
               </CardTitle>
               <Activity className="w-5 h-5 text-blue-600" />
@@ -109,14 +109,14 @@ export default function QueueMonitor() {
           </CardHeader>
           <CardContent>
             <p className="text-4xl font-bold text-blue-600">{totalJobs}</p>
-            <p className="text-xs text-slate-400 mt-2">All queues</p>
+            <p className="text-xs text-muted-foreground mt-2">All queues</p>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-lg bg-background">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm uppercase text-slate-600">
+              <CardTitle className="text-sm uppercase text-muted-foreground">
                 Active Jobs
               </CardTitle>
               <Activity className="w-5 h-5 text-green-600" />
@@ -124,14 +124,14 @@ export default function QueueMonitor() {
           </CardHeader>
           <CardContent>
             <p className="text-4xl font-bold text-green-600">{activeJobs}</p>
-            <p className="text-xs text-slate-400 mt-2">Currently processing</p>
+            <p className="text-xs text-muted-foreground mt-2">Currently processing</p>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-lg bg-background">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm uppercase text-slate-600">
+              <CardTitle className="text-sm uppercase text-muted-foreground">
                 Failed Jobs
               </CardTitle>
               <Activity className="w-5 h-5 text-red-600" />
@@ -139,7 +139,7 @@ export default function QueueMonitor() {
           </CardHeader>
           <CardContent>
             <p className="text-4xl font-bold text-red-600">{failedJobs}</p>
-            <p className="text-xs text-slate-400 mt-2">Need attention</p>
+            <p className="text-xs text-muted-foreground mt-2">Need attention</p>
           </CardContent>
         </Card>
       </div>
@@ -160,7 +160,7 @@ export default function QueueMonitor() {
                 className={`h-1 ${
                   queue.status === "running"
                     ? "bg-gradient-to-r from-green-500 to-emerald-600"
-                    : "bg-slate-400"
+                    : "bg-card"
                 }`}
               />
 
@@ -195,13 +195,13 @@ export default function QueueMonitor() {
 
                 <div className="mt-6">
                   <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium text-slate-700">
+                    <span className="text-sm font-medium bg-muted">
                       Queue Progress
                     </span>
-                    <span className="text-sm text-slate-500">{progress}%</span>
+                    <span className="text-sm bg-muted">{progress}%</span>
                   </div>
 
-                  <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+                  <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 transition-all"
                       style={{ width: `${progress}%` }}
@@ -219,15 +219,15 @@ export default function QueueMonitor() {
 
 function Stat({ label, value, color }) {
   const colors = {
-    blue: "bg-blue-50 border-blue-200 text-blue-600",
-    green: "bg-green-50 border-green-200 text-green-600",
-    purple: "bg-purple-50 border-purple-200 text-purple-600",
-    red: "bg-red-50 border-red-200 text-red-600",
+    blue: "bg-blue-50 border-blue-200 text-blue-600 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400",
+    green: "bg-green-50 border-green-200 text-green-600 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400",
+    purple: "bg-purple-50 border-purple-200 text-purple-600 dark:bg-purple-900/20 dark:border-purple-800 dark:text-purple-400",
+    red: "bg-red-50 border-red-200 text-red-600 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400",
   };
 
   return (
     <div className={`p-4 rounded-lg border ${colors[color]}`}>
-      <p className="text-xs font-semibold mb-1 text-slate-600">{label}</p>
+      <p className="text-xs font-semibold mb-1 text-muted-foreground">{label}</p>
       <p className="text-2xl font-bold">{value}</p>
     </div>
   );

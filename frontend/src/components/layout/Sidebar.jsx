@@ -13,15 +13,15 @@ export default function Sidebar() {
 
   return (
     <aside
-      className="w-64 min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 
-                 text-white p-6 border-r border-slate-700 shadow-xl"
+      className="w-64 min-h-screen bg-gradient-to-b text-foreground from-background via-muted to-background 
+                 p-6 border-r border-border shadow-xl transition-all duration-300"
     >
-      <div className="mb-8 pb-6 border-b border-slate-700">
+      <div className="mb-8 pb-6 border-b border-border">
         <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 
                        bg-clip-text text-transparent">
           Bot Control
         </h2>
-        <p className="text-sm text-slate-400 mt-1">Manage your automation</p>
+        <p className="text-sm text-muted-foreground mt-1">Manage your automation</p>
       </div>
 
       <nav className="flex flex-col gap-2">
@@ -34,7 +34,7 @@ export default function Sidebar() {
               ${
                 isActive
                   ? "bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg"
-                  : "text-slate-300 hover:bg-slate-700/50 hover:text-white"
+                  : "bg-muted hover:bg-card text-foreground hover:text-foreground"
               }`
             }
           >

@@ -25,7 +25,7 @@ function DashboardSkeleton() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[1, 2, 3].map((i) => (
           <Card key={i} className="border-0 shadow-lg bg-background">
-            <div className="h-2 bg-slate-200" />
+            <div className="h-2 bg-muted" />
             <CardHeader className="pb-3">
               <Skeleton className="h-4 w-40" />
             </CardHeader>

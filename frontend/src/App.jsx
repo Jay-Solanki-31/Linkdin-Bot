@@ -4,7 +4,7 @@ import Dashboard from "./pages/Dashboard.jsx";
 import Fetcher from "./pages/Fetcher.jsx";
 import FetcherList from "./pages/FetcherList.jsx";
 import QueueMonitor from "./pages/QueueMonitor.jsx";
-import  AIPosts from "./pages/AI.jsx";
+import  AIPosts from "./pages/AiGeratepost.jsx";
 
 function App() {
   return (

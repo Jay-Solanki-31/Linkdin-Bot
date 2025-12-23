@@ -12,7 +12,7 @@ export default function ThemeToggle() {
       onClick={() =>
         setTheme(theme === "dark" ? "light" : "dark")
       }
-      className="rounded-full"
+      className="rounded-full transition-all duration-300 hover:scale-105"
     >
       {theme === "dark" ? (
         <Sun className="h-4 w-4" />

@@ -18,7 +18,6 @@ export default function AIPosts() {
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
 
     fetch(`/api/ai-posts?page=${page}&limit=5`)
@@ -34,7 +33,7 @@ export default function AIPosts() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">AI Generated Posts</h1>
-        <p className="text-slate-500">Review and manage AI content</p>
+        <p className="bg-muted">Review and manage AI content</p>
       </div>
 
       <div className="space-y-4">
@@ -50,7 +49,7 @@ export default function AIPosts() {
 
         {/* Empty state */}
         {!loading && posts.length === 0 && (
-          <div className="text-center text-slate-500 py-20">
+          <div className="text-center bg-muted py-20">
             No AI posts generated yet.
           </div>
         )}
@@ -68,17 +67,17 @@ export default function AIPosts() {
                 <div className="flex justify-between items-center">
                   <h3 className="font-semibold text-lg">{post.title}</h3>
                   <Badge
-                    className={statusColors[post.status] || "bg-slate-400"}
+                    className={statusColors[post.status] || "bg-card"}
                   >
                     {post.status.toUpperCase()}
                   </Badge>
                 </div>
 
-                <p className="text-slate-600 line-clamp-3">
+                <p className="text-muted-foreground line-clamp-3">
                   {post.text || "No AI content generated yet"}
                 </p>
 
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-muted-foreground">
                   {new Date(post.createdAt).toLocaleString()}
                 </p>
               </CardContent>
@@ -97,7 +96,7 @@ export default function AIPosts() {
             Prev
           </button>
 
-          <span className="text-sm text-slate-600">
+          <span className="text-sm text-muted-foreground">
             Page {meta.page} of {meta.totalPages}
           </span>
 
@@ -117,7 +116,7 @@ export default function AIPosts() {
           <div className="bg-background rounded-xl max-w-2xl w-full shadow-xl relative">
             <button
               onClick={() => setSelectedPost(null)}
-              className="absolute top-3 right-3 text-slate-500 hover:text-slate-800"
+              className="absolute top-3 right-3 bg-muted hover:bg-muted"
             >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -131,11 +130,11 @@ export default function AIPosts() {
                 {selectedPost.status.toUpperCase()}
               </Badge>
 
-              <p className="text-slate-700 whitespace-pre-line leading-relaxed">
+              <p className="bg-muted whitespace-pre-line leading-relaxed">
                 {selectedPost.text}
               </p>
 
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted-foreground">
                 Generated at{" "}
                 {new Date(selectedPost.createdAt).toLocaleString()}
               </p>

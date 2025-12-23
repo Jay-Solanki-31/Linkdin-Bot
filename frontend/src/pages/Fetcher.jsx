@@ -6,11 +6,11 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 const sources = [
-  { id: "github", label: "GitHub", icon: "🐙", color: "from-gray-700 to-gray-900", lightBg: "from-gray-50 to-gray-100" },
-  { id: "devto", label: "Dev.to", icon: "📝", color: "from-black to-gray-900", lightBg: "from-slate-50 to-slate-100" },
-  { id: "medium", label: "Medium", icon: "📰", color: "from-slate-800 to-slate-900", lightBg: "from-slate-50 to-slate-100" },
-  { id: "npm", label: "NPM", icon: "📦", color: "from-red-600 to-red-700", lightBg: "from-red-50 to-red-100" },
-  { id: "hackernews", label: "Hacker News", icon: "🔥", color: "from-orange-500 to-orange-600", lightBg: "from-orange-50 to-orange-100" },
+  { id: "github", label: "GitHub", icon: "🐙", color: "from-gray-600 to-gray-800 dark:from-gray-700 dark:to-gray-900", lightBg: "from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700" },
+  { id: "devto", label: "Dev.to", icon: "📝", color: "from-slate-500 to-slate-700 dark:from-slate-600 dark:to-slate-900", lightBg: "from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700" },
+  { id: "medium", label: "Medium", icon: "📰", color: "from-slate-500 to-slate-700 dark:from-slate-600 dark:to-slate-900", lightBg: "from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700" },
+  { id: "npm", label: "NPM", icon: "📦", color: "from-red-500 to-red-600 dark:from-red-600 dark:to-red-700", lightBg: "from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20" },
+  { id: "hackernews", label: "Hacker News", icon: "🔥", color: "from-orange-500 to-orange-600", lightBg: "from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20" },
 ];
 
 export default function Fetcher() {
@@ -40,7 +40,7 @@ const handleFetch = async (source) => {
     <div className="space-y-8">
       <div className="flex flex-col gap-2">
         <h1 className="text-4xl font-bold text-foreground">Content Sources</h1>
-        <p className="text-slate-500">Fetch articles from multiple platforms with a single click</p>
+        <p className="bg-muted">Fetch articles from multiple platforms with a single click</p>
       </div>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -54,7 +54,7 @@ const handleFetch = async (source) => {
                 </div>
                 <div>
                   <CardTitle className="text-foreground">{s.label}</CardTitle>
-                  <p className="text-xs text-slate-400 mt-1">Fetch trending content</p>
+                  <p className="text-xs text-muted-foreground mt-1">Fetch trending content</p>
                 </div>
               </div>
             </CardHeader>
@@ -78,12 +78,12 @@ const handleFetch = async (source) => {
         ))}
       </div>
 
-      <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-indigo-50">
+      <Card className="border-0 shadow-lg bg-gradient-to-br from-muted to-card">
         <CardHeader>
           <CardTitle className="text-foreground">💡 Quick Tips</CardTitle>
         </CardHeader>
         <CardContent>
-          <ul className="space-y-2 text-sm text-slate-600">
+          <ul className="space-y-2 text-sm text-muted-foreground">
             <li>✓ Click any source to fetch latest articles automatically</li>
             <li>✓ Articles are stored in the database and ready for AI processing</li>
             <li>✓ Check the Records tab to view all fetched content</li>
