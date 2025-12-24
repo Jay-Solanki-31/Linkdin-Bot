@@ -3,8 +3,8 @@ import FetchedContent from "../../models/fetchedContent.model.js";
 import { addAIJob } from "../../queue/ai.queue.js";
 import logger from "../../utils/logger.js";
 
-export const startAIScheduler = (cronExpression = "*/45 * * * *") => {
-  logger.info("AI Scheduler starting with cron jobs at every 45 Minutes :", cronExpression);
+export const startAIScheduler = (cronExpression = "0,45 * * * *") => {
+  logger.info("AI Scheduler starting, will run at minute 0 & 45 of every hour");
 
   cron.schedule(cronExpression, async () => {
     try {
