@@ -1,0 +1,10 @@
+// PORT=5000
+// MONGO_URI= // mongo db url;
+// REDIS_HOST=//127.0.0.1
+// REDIS_PORT=//6379
+// REDIS_PASSWORD=
+// GEMINI_API_KEY= // gemini api ket
+// // ADMIN_KEY =  Add admin key  for a bullmq
+// LINKEDIN_CLIENT_ID= // your linkedin client id to  that  use by linkdin
+// LINKEDIN_CLIENT_SECRET=// your linkedin client id secrte
+// LINKEDIN_REDIRECT_URI=// http://localhost:5000/auth/linkedin/callback backend port that redierct the url
