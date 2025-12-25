@@ -1,4 +1,5 @@
 import ThemeToggle from "@/components/ThemeToggle";
+import LinkedInStatus from "@/components/LinkedInStatus";
 
 export default function Header() {
   return (
@@ -39,6 +40,7 @@ export default function Header() {
       {/* Right: Theme Toggle */}
       <div className="ml-auto flex items-center">
         <ThemeToggle />
+        <LinkedInStatus/>
       </div>
     </header>
   );

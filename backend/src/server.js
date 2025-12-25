@@ -11,6 +11,7 @@ import aiRoute from "./routes/ai.routes.js";
 
 import { startFetchScheduler } from "./modules/scheduler/fetchScheduler.js";
 import { startAIScheduler } from "./modules/scheduler/aiScheduler.js";
+import linkedinAuthRoutes from "./routes/linkedinAuth.routes.js";
 
 
 import bullBoard from "./dashboard/bullboard.js";
@@ -31,6 +32,7 @@ app.get("/", (req, res) => {
 app.use("/ai", aiRoute);
 app.use("/api", fetcherRoute);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/auth/linkedin", linkedinAuthRoutes);
 app.use("/api/ai-posts", aiPostsRoutes);
 app.use('/admin/queues', dashboardAuth,bullBoard.getRouter());
 
@@ -44,7 +46,6 @@ async function start() {
     await import("./queue/workers/ai.worker.js");
     await import("./queue/workers/fetcher.worker.js");
 
-    // start schedulers
     startFetchScheduler(); 
     startAIScheduler(); 
 
