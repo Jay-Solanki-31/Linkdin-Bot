@@ -1,15 +1,9 @@
 import mongoose from "mongoose";
 
 const LinkedInTokenSchema = new mongoose.Schema({
-  _accessToken: {
+  accessToken: {
     type: String,
     required: true,
-  },
-  get accessToken() {
-    return this._accessToken;
-  },
-  set accessToken(value) {
-    this._accessToken = value;
   },
 
   expiresAt: {
