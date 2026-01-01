@@ -15,7 +15,7 @@ import linkedinAuthRoutes from "./routes/linkedinAuth.routes.js";
 
 
 import bullBoard from "./dashboard/bullboard.js";
-import dashboardAuth from "../middleware/bullmq.middleware.js";
+import dashboardAuth from "./middleware/bullmq.middleware.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
 import aiPostsRoutes from "./routes/aiPosts.routes.js";
 import publisherRoutes from "./routes/publisher.routes.js";
@@ -30,6 +30,7 @@ app.use(cors());
 app.get("/", (req, res) => {
   res.json({ message: "LinkedIn Bot Server Running" });
 });
+
 
 app.use("/ai", aiRoute);
 app.use("/api", fetcherRoute);
