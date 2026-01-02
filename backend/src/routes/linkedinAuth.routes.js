@@ -23,7 +23,8 @@ router.get("/login", (req, res) => {
 router.get("/callback", async (req, res) => {
   const code = req.query.code;
 
-  if (!code) return res.status(400).json({ message: "Authorization code missing" });
+  if (!code)
+    return res.status(400).json({ message: "Authorization code missing" });
 
   try {
     const tokenRes = await axios.post(
@@ -42,37 +43,52 @@ router.get("/callback", async (req, res) => {
     );
 
     const accessToken = tokenRes.data.access_token;
-    const expiresIn = tokenRes.data.expires_in; 
-
+    const expiresIn = tokenRes.data.expires_in;
     const expiresAt = new Date(Date.now() + expiresIn * 1000);
 
     await LinkedInToken.findOneAndUpdate(
       {},
-      {
-        accessToken,
-        expiresAt,
-      },
+      { accessToken, expiresAt },
       { upsert: true, new: true }
     );
 
-    res.json({
-      success: true,
-      message: "LinkedIn Connected Successfully",
-      expiresAt,
-    });
-
+    return res.send(`
+    <html>
+      <body>
+        <script>
+          window.opener.postMessage(
+            { status: "success", source: "linkedin-auth" },
+            "http://localhost:5173"
+          );
+          window.close();
+        </script>
+        <p>You can close this window</p>
+      </body>
+    </html>
+`);
   } catch (err) {
     console.error("LinkedIn OAuth Error:", err.response?.data || err.message);
-    res.status(500).json({ message: "LinkedIn OAuth failed" });
+    return res.send(`
+    <html>
+      <body>
+        <script>
+          window.opener.postMessage(
+            { status: "failed", source: "linkedin-auth" },
+            "*"
+          );
+          window.close();
+        </script>
+        <p>LinkedIn connection failed. You can close this window.</p>
+      </body>
+    </html>
+  `);
   }
 });
-
 
 router.get("/status", async (req, res) => {
   const tokenDoc = await LinkedInToken.findOne();
 
-  if (!tokenDoc)
-    return res.json({ connected: false });
+  if (!tokenDoc) return res.json({ connected: false });
 
   const expired = new Date() > tokenDoc.expiresAt;
 

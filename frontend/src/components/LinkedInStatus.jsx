@@ -4,16 +4,42 @@ export default function LinkedInStatus() {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const refreshStatus = async () => {
+    setLoading(true);
+    const res = await fetch("/api/auth/linkedin/status");
+    const data = await res.json();
+    setStatus(data);
+    setLoading(false);
+  };
+
   useEffect(() => {
-    fetch("/api/auth/linkedin/status")
-      .then(res => res.json())
-      .then(data => setStatus(data))
-      .finally(() => setLoading(false));
+    refreshStatus();
   }, []);
 
   const connectLinkedIn = () => {
-    window.location.href = "/api/auth/linkedin/login"; 
+    const popup = window.open(
+      "/api/auth/linkedin/login",
+      "linkedin-login",
+      "width=650,height=700"
+    );
+
+    if (!popup) {
+      alert("Popup blocked! Enable popups.");
+      return;
+    }
+
+    const listener = (event) => {
+      if (!event.data || event.data.source !== "linkedin-auth") return;
+
+      if (event.data.status === "success") refreshStatus();
+
+      window.removeEventListener("message", listener);
+      popup.close();
+    };
+
+    window.addEventListener("message", listener);
   };
+
 
   if (loading) return (
     <div className="px-4 py-2 border rounded animate-pulse w-48">
