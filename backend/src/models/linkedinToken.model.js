@@ -1,6 +1,11 @@
 import mongoose from "mongoose";
 
 const LinkedInTokenSchema = new mongoose.Schema({
+  _id: {
+    type: String,
+    default: "linkedin_app_token",
+  },
+
   accessToken: {
     type: String,
     required: true,
@@ -11,13 +16,8 @@ const LinkedInTokenSchema = new mongoose.Schema({
     required: true,
   },
 
-  memberId: {
-    type: String,
-  },
-
-  profileName: {
-    type: String,
-  },
+  memberId: String,
+  profileName: String,
 
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },

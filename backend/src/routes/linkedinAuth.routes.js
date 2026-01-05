@@ -1,92 +1,83 @@
-import LinkedInToken from "../models/linkedinToken.model.js";
-
 import express from "express";
 import axios from "axios";
+import crypto from "crypto";
+import LinkedInToken from "../models/linkedinToken.model.js";
 
 const router = express.Router();
 
 const CLIENT_ID = process.env.LINKEDIN_CLIENT_ID;
 const CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET;
 const REDIRECT_URI = process.env.LINKEDIN_REDIRECT_URI;
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "http://localhost:5173";
 
+// ------------------- LOGIN -------------------
 router.get("/login", (req, res) => {
-  const scope = "w_member_social";
+  const state = crypto.randomUUID();
+  req.session.linkedinState = state;
 
-  const url = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(
-    REDIRECT_URI
-  )}&scope=${scope}`;
+  const authUrl =
+    "https://www.linkedin.com/oauth/v2/authorization" +
+    `?response_type=code` +
+    `&client_id=${CLIENT_ID}` +
+    `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
+    `&scope=${encodeURIComponent("w_member_social")}` +
+    `&state=${state}`;
 
-  return res.redirect(url);
+  res.redirect(authUrl);
 });
 
-//LinkedIn Callback → Exchange Code → Token
+// ------------------- CALLBACK -------------------
 router.get("/callback", async (req, res) => {
-  const code = req.query.code;
+  const { code, state } = req.query;
 
-  if (!code)
-    return res.status(400).json({ message: "Authorization code missing" });
+  if (!code) {
+    return sendPopupResponse(res, "failed", "Authorization code missing");
+  }
+
+  if (!state || state !== req.session.linkedinState) {
+    return sendPopupResponse(res, "failed", "Invalid OAuth State");
+  }
 
   try {
+    const data = new URLSearchParams({
+      grant_type: "authorization_code",
+      code,
+      redirect_uri: REDIRECT_URI,
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+    });
+
     const tokenRes = await axios.post(
       "https://www.linkedin.com/oauth/v2/accessToken",
-      null,
-      {
-        params: {
-          grant_type: "authorization_code",
-          code,
-          redirect_uri: REDIRECT_URI,
-          client_id: CLIENT_ID,
-          client_secret: CLIENT_SECRET,
-        },
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      }
+      data.toString(),
+      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
     );
 
     const accessToken = tokenRes.data.access_token;
     const expiresIn = tokenRes.data.expires_in;
     const expiresAt = new Date(Date.now() + expiresIn * 1000);
 
+    // Save token (single record only)
     await LinkedInToken.findOneAndUpdate(
-      {},
-      { accessToken, expiresAt },
+      { _id: "linkedin_app_token" },
+      {
+        _id: "linkedin_app_token",
+        accessToken,
+        expiresAt,
+      },
       { upsert: true, new: true }
     );
 
-    return res.send(`
-    <html>
-      <body>
-        <script>
-          window.opener.postMessage(
-            { status: "success", source: "linkedin-auth" },
-            "http://localhost:5173"
-          );
-          window.close();
-        </script>
-        <p>You can close this window</p>
-      </body>
-    </html>
-`);
+    return sendPopupResponse(res, "success");
   } catch (err) {
     console.error("LinkedIn OAuth Error:", err.response?.data || err.message);
-    return res.send(`
-    <html>
-      <body>
-        <script>
-          window.opener.postMessage(
-            { status: "failed", source: "linkedin-auth" },
-            "*"
-          );
-          window.close();
-        </script>
-        <p>LinkedIn connection failed. You can close this window.</p>
-      </body>
-    </html>
-  `);
+    return sendPopupResponse(res, "failed", "Token exchange failed");
   }
 });
 
+// ------------------- STATUS -------------------
 router.get("/status", async (req, res) => {
-  const tokenDoc = await LinkedInToken.findOne();
+  const tokenDoc = await LinkedInToken.findById("linkedin_app_token");
 
   if (!tokenDoc) return res.json({ connected: false });
 
@@ -98,5 +89,23 @@ router.get("/status", async (req, res) => {
     expiresAt: tokenDoc.expiresAt,
   });
 });
+
+// ------------------- Helper Popup Sender -------------------
+function sendPopupResponse(res, status, message) {
+  return res.send(`
+    <html>
+      <body>
+        <script>
+          window.opener?.postMessage(
+            { status: "${status}", source: "linkedin-auth", message: "${message || ""}" },
+            "${FRONTEND_ORIGIN}"
+          );
+          window.close();
+        </script>
+        <p>You can close this window</p>
+      </body>
+    </html>
+  `);
+}
 
 export default router;

@@ -1,5 +1,6 @@
 import express from "express";
 import dotenv from "dotenv";
+import session from "express-session";
 dotenv.config();
 
 import cors from "cors";
@@ -26,6 +27,17 @@ import publisherRoutes from "./routes/publisher.routes.js";
 const app = express();
 app.use(express.json());
 app.use(cors());
+app.use(
+  session({
+    secret: "supersecret-key",
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+      secure: false,
+      maxAge: 1000 * 60 * 10, 
+    },
+  })
+);
 
 app.get("/", (req, res) => {
   res.json({ message: "LinkedIn Bot Server Running" });
