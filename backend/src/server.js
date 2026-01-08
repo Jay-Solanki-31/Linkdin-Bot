@@ -12,6 +12,8 @@ import aiRoute from "./routes/ai.routes.js";
 
 import { startFetchScheduler } from "./modules/scheduler/fetchScheduler.js";
 import { startAIScheduler } from "./modules/scheduler/aiScheduler.js";
+import { startLinkedInScheduler } from "./modules/scheduler/linkedinScheduler.js";
+
 import linkedinAuthRoutes from "./routes/linkedinAuth.routes.js";
 
 
@@ -64,6 +66,8 @@ async function start() {
 
     startFetchScheduler(); 
     startAIScheduler(); 
+    startLinkedInScheduler();
+
 
     app.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);

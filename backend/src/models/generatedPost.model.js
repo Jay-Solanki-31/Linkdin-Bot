@@ -7,15 +7,22 @@ const GeneratedPostSchema = new mongoose.Schema({
     required: true,
     index: true
   },
+
   title: { type: String, default: "" },
   text: { type: String, required: true },
   url: { type: String },
   source: { type: String },
   status: {
     type: String,
-    enum: ["pending", "draft", "completed", "failed"],
+    enum: ["draft", "queued", "posted", "failed"],
     default: "draft",
+    index: true
   },
+
+  linkedinPostUrn: String,
+  postedAt: Date,
+  error: String,
+
 }, { timestamps: true });
 
 export default mongoose.model("GeneratedPost", GeneratedPostSchema);

@@ -31,11 +31,6 @@ export async function publishToLinkedIn({ text }) {
   };
 
   try {
-    console.log("HEADERS ---->", {
-      token: accessToken.slice(0, 8),
-      author,
-    });
-
     const response = await axios.post(
       "https://api.linkedin.com/rest/posts",
       payload,
