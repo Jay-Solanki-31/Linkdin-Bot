@@ -15,14 +15,20 @@ router.get("/login", (req, res) => {
   const state = crypto.randomUUID();
   req.session.linkedinState = state;
 
+  const scope = [
+    "openid",
+    "profile",
+    "email",
+    "w_member_social"
+  ].join(" ");
+
   const authUrl =
     "https://www.linkedin.com/oauth/v2/authorization" +
     `?response_type=code` +
     `&client_id=${CLIENT_ID}` +
     `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
-    `&scope=${encodeURIComponent("w_member_social")}` +
+    `&scope=${encodeURIComponent(scope)}` +
     `&state=${state}`;
-
   res.redirect(authUrl);
 });
 
@@ -44,7 +50,7 @@ router.get("/callback", async (req, res) => {
       code,
       redirect_uri: REDIRECT_URI,
       client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
+      client_secret: CLIENT_SECRET
     });
 
     const tokenRes = await axios.post(
@@ -57,23 +63,39 @@ router.get("/callback", async (req, res) => {
     const expiresIn = tokenRes.data.expires_in;
     const expiresAt = new Date(Date.now() + expiresIn * 1000);
 
-    // Save token (single record only)
+    // Get Member URN
+    const meRes = await axios.get(
+      "https://api.linkedin.com/v2/userinfo",
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "LinkedIn-Version": "20240101"
+        }
+      }
+    );
+
+    const memberUrn = `urn:li:person:${meRes.data.sub}`;
+
     await LinkedInToken.findOneAndUpdate(
       { _id: "linkedin_app_token" },
       {
         _id: "linkedin_app_token",
         accessToken,
         expiresAt,
+        memberUrn
       },
       { upsert: true, new: true }
     );
 
+    delete req.session.linkedinState;
+
     return sendPopupResponse(res, "success");
   } catch (err) {
-    console.error("LinkedIn OAuth Error:", err.response?.data || err.message);
+    console.error("LinkedIn OAuth Error:", err?.response?.data || err.message);
     return sendPopupResponse(res, "failed", "Token exchange failed");
   }
 });
+
 
 // ------------------- STATUS -------------------
 router.get("/status", async (req, res) => {
@@ -86,7 +108,7 @@ router.get("/status", async (req, res) => {
   res.json({
     connected: !expired,
     expired,
-    expiresAt: tokenDoc.expiresAt,
+    expiresAt: tokenDoc.expiresAt
   });
 });
 

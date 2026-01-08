@@ -3,59 +3,48 @@ import LinkedInToken from "../../models/linkedinToken.model.js";
 import logger from "../../utils/logger.js";
 
 async function getTokenRecord() {
-  const token = await LinkedInToken.findOne();
+  const token = await LinkedInToken.findById("linkedin_app_token");
   if (!token) throw new Error("LinkedIn not connected");
+
+  if (!token.memberUrn)
+    throw new Error("LinkedIn member URN missing. Reconnect LinkedIn login.");
+
   return token;
 }
 
-async function getPersonURN(accessToken) {
-  const res = await axios.get("https://api.linkedin.com/v2/me", {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-
-  return `urn:li:person:${res.data.id}`;
-}
-
 export async function publishToLinkedIn({ text }) {
-  const tokenRecord = await getTokenRecord();
+  const tokenRecord = await getTokenRecord(); 
   const accessToken = tokenRecord.accessToken;
-
-  let personURN = tokenRecord.personURN;
-
-  if (!personURN) {
-    personURN = await getPersonURN(accessToken);
-
-    tokenRecord.personURN = personURN;
-    await tokenRecord.save();
-  }
+  const author = tokenRecord.memberUrn;
 
   const payload = {
-    author: personURN,
+    author,
+    commentary: text,
+    visibility: "PUBLIC",
+    distribution: {
+      feedDistribution: "MAIN_FEED",
+      targetEntities: [],
+      thirdPartyDistributionChannels: [],
+    },
     lifecycleState: "PUBLISHED",
-    specificContent: {
-      "com.linkedin.ugc.ShareContent": {
-        shareCommentary: {
-          text,
-        },
-        shareMediaCategory: "NONE",
-      },
-    },
-    visibility: {
-      "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC",
-    },
+    isReshareDisabledByAuthor: false,
   };
 
   try {
+    console.log("HEADERS ---->", {
+      token: accessToken.slice(0, 8),
+      author,
+    });
+
     const response = await axios.post(
-      "https://api.linkedin.com/v2/ugcPosts",
+      "https://api.linkedin.com/rest/posts",
       payload,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          "X-Restli-Protocol-Version": "2.0.0",
           "Content-Type": "application/json",
+          "X-Restli-Protocol-Version": "2.0.0",
+          "LinkedIn-Version": "202511", 
         },
       }
     );
@@ -63,7 +52,11 @@ export async function publishToLinkedIn({ text }) {
     logger.info("LinkedIn Post Success", response.data);
     return { ok: true, data: response.data };
   } catch (err) {
-    logger.error("LinkedIn Post Failed", err?.response?.data || err);
+    logger.error(
+      "LinkedIn REST Post Failed",
+      err?.response?.data,
+      err?.response?.config?.headers
+    );
     throw err;
   }
 }

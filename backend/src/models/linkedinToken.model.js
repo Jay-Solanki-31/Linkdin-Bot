@@ -11,6 +11,11 @@ const LinkedInTokenSchema = new mongoose.Schema({
     required: true,
   },
 
+  memberUrn :{
+    type: String,
+    required: true
+  },
+  
   expiresAt: {
     type: Date,
     required: true,
