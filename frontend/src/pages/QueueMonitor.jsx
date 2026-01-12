@@ -3,6 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Activity } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { toast } from "sonner";
 
 function QueueMonitorSkeleton() {
   return (
@@ -55,6 +56,7 @@ export default function QueueMonitor() {
         }
       } catch (err) {
         console.error("Failed to load queue data", err);
+        if (mounted) toast.error("Failed to load queue data");
       } finally {
         if (mounted) setLoading(false);
       }

@@ -3,6 +3,7 @@ import axios from "axios";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, Zap, Activity } from "lucide-react";
 import {DashboardSkeleton} from "@/components/ui/PostSkeleton";
+import { toast } from "sonner";
 
 export default function Dashboard() {
   const [data, setData] = useState(null);
@@ -15,6 +16,7 @@ export default function Dashboard() {
       setLoading(false);
     } catch (err) {
       console.log("Dashboard Load Error:", err);
+      toast.error("Failed to load dashboard data");
       setLoading(false);
     }
   };

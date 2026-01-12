@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PostSkeleton } from "@/components/ui/PostSkeleton";
 import { fetchAIPosts, updateAIPost } from "@/api/aiPosts.api";
+import { toast } from "sonner";
 
 export default function AIPosts() {
   const [posts, setPosts] = useState([]);
@@ -23,7 +24,12 @@ export default function AIPosts() {
     failed: "bg-red-500",
   };
 
-  // ---------- FETCH POSTS -----------
+  function removeUrls(text) {
+  return text.replace(/https?:\/\/\S+/g, "").trim();
+  }
+
+
+  // -------- FETCH POSTS ----------
   useEffect(() => {
     setLoading(true);
 
@@ -32,10 +38,11 @@ export default function AIPosts() {
         setPosts(data.data || []);
         setMeta(data.pagination);
       })
+      .catch(() => toast.error("Failed to load AI posts"))
       .finally(() => setLoading(false));
   }, [page]);
 
-  // ------- OPEN MODAL ------------
+  // -------- OPEN MODAL ----------
   function openPost(post) {
     setSelectedPost(post);
     setIsEditing(false);
@@ -43,32 +50,45 @@ export default function AIPosts() {
     setEditText(post.text || "");
   }
 
-  // ----- SAVE EDIT --------
+  // -------- SAVE EDIT ----------
   async function handleSave() {
     try {
       setSaving(true);
 
+      const cleanedText = removeUrls(editText);
+
+      if (cleanedText !== editText) {
+        toast.warning("Source URL is locked and was removed from content");
+      }
+
       const updated = await updateAIPost(selectedPost._id, {
         title: editTitle,
-        text: editText,
+        text: cleanedText,
       });
+  
+      const mergedPost = {
+        ...selectedPost,
+        ...updated,
+        url: selectedPost.url,
+      };
 
       setPosts((prev) =>
-        prev.map((p) => (p._id === updated._id ? updated : p))
+        prev.map((p) => (p._id === mergedPost._id ? mergedPost : p))
       );
 
-      setSelectedPost(updated);
+      setSelectedPost(mergedPost);
       setIsEditing(false);
+
+      toast.success("Post updated successfully");
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message || "Failed to update post");
     } finally {
       setSaving(false);
     }
   }
 
   const canEdit =
-    selectedPost &&
-    !["posted", "queued"].includes(selectedPost.status);
+    selectedPost && !["posted", "queued"].includes(selectedPost.status);
 
   return (
     <div className="space-y-6">
@@ -174,15 +194,31 @@ export default function AIPosts() {
                     rows={6}
                     className="w-full border p-2 rounded"
                   />
+
+                <p className="text-xs text-muted-foreground">
+                  Source link is locked and cannot be edited
+                </p>
+
                 </>
               ) : (
                 <>
-                  <h2 className="text-2xl font-bold">
-                    {selectedPost.title}
-                  </h2>
+                  <h2 className="text-2xl font-bold">{selectedPost.title}</h2>
+
                   <p className="whitespace-pre-line bg-muted p-3 rounded">
                     {selectedPost.text}
                   </p>
+
+                  {!isEditing && selectedPost.url && (
+                  <a
+                    href={selectedPost.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 underline"
+                  >
+                    View source article
+                  </a>
+                )}
+
                 </>
               )}
 
@@ -214,8 +250,7 @@ export default function AIPosts() {
                         className="px-4 py-2 border rounded"
                       >
                         Cancel
-                      </button>  
-
+                      </button>
                     </>
                   )}
                 </div>
@@ -227,4 +262,3 @@ export default function AIPosts() {
     </div>
   );
 }
- 

@@ -13,13 +13,13 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export default function FetcherList() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  // pagination
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
@@ -29,6 +29,7 @@ export default function FetcherList() {
       setRecords(res.data.data);
     } catch (err) {
       console.log("Error loading records:", err);
+      toast.error("Failed to load fetched records");
     }
     setLoading(false);
   };
@@ -39,14 +40,13 @@ export default function FetcherList() {
     return () => clearInterval(interval);
   }, []);
 
-  // search filter
   const filtered = records.filter(
     (r) =>
       r.title.toLowerCase().includes(search.toLowerCase()) ||
       r.source.toLowerCase().includes(search.toLowerCase())
   );
 
-  // pagination calculation
+  
   const totalPages = Math.ceil(filtered.length / pageSize);
   const startIndex = (page - 1) * pageSize;
   const currentPageData = filtered.slice(startIndex, startIndex + pageSize);
