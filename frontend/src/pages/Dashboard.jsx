@@ -63,13 +63,11 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
-        <div className="flex-1">
-          <h1 className="text-4xl font-bold text-foreground">Dashboard</h1>
-          <p className="bg-muted mt-2">
-            Welcome back! Here's your automation overview
-          </p>
-        </div>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Monitor your automation and system health
+        </p>
       </div>
 
       {/* STATS CARDS */}
@@ -77,29 +75,20 @@ export default function Dashboard() {
         {stats.map((stat, idx) => {
           const Icon = stat.icon;
           return (
-            <Card
-              key={idx}
-              className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-background"
-            >
-              <div className={`h-2 bg-gradient-to-r ${stat.gradient}`}></div>
-
+            <Card key={idx} className="overflow-hidden">
+              <div className={`h-1 bg-gradient-to-r ${stat.gradient}`}></div>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="bg-muted text-sm font-semibold uppercase tracking-wider">
+                  <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     {stat.title}
                   </CardTitle>
-                  <div
-                    className={`p-2 rounded-lg bg-gradient-to-br ${stat.bgGradient}`}
-                  >
-                    <Icon className={`w-5 h-5 ${stat.color}`} />
+                  <div className={`p-2 rounded-lg bg-gradient-to-br ${stat.bgGradient}`}>
+                    <Icon className={`w-4 h-4 ${stat.color}`} />
                   </div>
                 </div>
               </CardHeader>
-
               <CardContent>
-                <p
-                  className={`text-4xl font-bold bg-gradient-to-r ${stat.gradient} bg-clip-text text-transparent`}
-                >
+                <p className={`text-3xl font-bold bg-gradient-to-r ${stat.gradient} bg-clip-text text-transparent`}>
                   {stat.value}
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">Live updated</p>
@@ -111,19 +100,15 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
         {/* RECENT ACTIVITY */}
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-card via-muted to-card">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-foreground">Recent Activity</CardTitle>
+            <CardTitle className="text-lg">Recent Activity</CardTitle>
           </CardHeader>
-
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {data.recentActivity.map((item, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-4 p-3 rounded-lg bg-muted/50 border border-border"
-                >
-                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-muted/40 border border-border/40">
+                  <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></div>
                   <span className="text-sm text-muted-foreground">
                     {item.title.slice(0, 60)}...
                   </span>
@@ -134,80 +119,45 @@ export default function Dashboard() {
         </Card>
 
         {/* SYSTEM HEALTH */}
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-card via-muted to-card">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-foreground">System Health</CardTitle>
+            <CardTitle className="text-lg">System Health</CardTitle>
           </CardHeader>
-
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-5">
               {/* Redis connection */}
               <div>
                 <div className="flex justify-between mb-2">
-                  <span className="text-sm font-medium bg-muted">
+                  <span className="text-sm font-medium text-foreground">
                     Redis Connection
                   </span>
-                  <span
-                    className={`text-sm font-semibold ${
-                      data.system.redisConnected
-                        ? "text-green-600 dark:text-green-400"
-                        : "text-red-600 dark:text-red-400"
-                    }`}
-                  >
+                  <span className={`text-xs font-semibold ${
+                    data.system.redisConnected
+                      ? "text-green-600 dark:text-green-400"
+                      : "text-red-600 dark:text-red-400"
+                  }`}>
                     {data.system.redisConnected ? "Connected" : "Disconnected"}
                   </span>
                 </div>
-                <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className={`h-full w-full ${
-                      data.system.redisConnected
-                        ? "bg-green-500"
-                        : "bg-red-500"
-                    }`}
-                  ></div>
+                <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div className={`h-full w-full ${data.system.redisConnected ? "bg-green-500" : "bg-red-500"}`}></div>
                 </div>
               </div>
 
               {/* Queue */}
-                      <div>
-                      <div className="flex justify-between mb-2">
-                        <span className="text-sm font-medium bg-muted">
-                        Queue Status
-                        </span>
-                        <span
-                        className={`text-sm ${
-                          data.queue.running
-                          ? "text-blue-600 dark:text-blue-400"
-                          : "text-blue-600 dark:text-blue-400"
-                        } font-semibold`}
-                        >
-                        {data.queue.running ? "Running" : "Idle"}
-                        </span>
-                      </div>
-                      <div className="w-full h-2 bg-muted  rounded-full overflow-hidden">
-                        <div
-                        className={`h-full ${
-                          data.queue.running
-                          ? "w-full bg-blue-500"
-                          : "w-1/4 bg-blue-500"
-                        }`}
-                        ></div>
-                      </div>
-                      </div>
-
-              {/* Last run */}
-              {/* <div className="text-sm text-muted-foreground mt-4">
-                <p>
-                  <strong>Last Run:</strong>{" "}
-                  {new Date(data.system.lastRun).toLocaleString()}
-                </p>
-                <p>
-                  <strong>Next Run:</strong>{" "}
-                  {data.system.nextRun
-                    ? new Date(data.system.nextRun).toLocaleString()
-                    : "Calculating..."}
-                </p>
-              </div> */}
+              <div>
+                <div className="flex justify-between mb-2">
+                  <span className="text-sm font-medium text-foreground">
+                    Queue Status
+                  </span>
+                  <span className={`text-xs font-semibold ${data.queue.running ? "text-blue-600 dark:text-blue-400" : "text-blue-600 dark:text-blue-400"}`}>
+                    {data.queue.running ? "Running" : "Idle"}
+                  </span>
+                </div>
+                <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div className={`h-full ${data.queue.running ? "w-full bg-blue-500" : "w-1/4 bg-blue-500"}`}></div>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

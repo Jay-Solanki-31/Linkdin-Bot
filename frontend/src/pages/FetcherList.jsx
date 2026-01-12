@@ -56,21 +56,20 @@ export default function FetcherList() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-2 mb-8">
-        <h1 className="text-4xl font-bold text-foreground">Fetched Records</h1>
-        <p className="bg-muted">View and manage all collected articles</p>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-foreground">Fetched Records</h1>
+        <p className="text-sm text-muted-foreground mt-1">View and manage all collected articles</p>
       </div>
-      <Card className="border-0 shadow-lg bg-background">
-        <CardHeader className="border-b border-border">
-          <CardTitle className="text-foreground">All Records</CardTitle>
+      <Card>
+        <CardHeader className="border-b border-border/40">
+          <CardTitle className="text-base mb-4">All Records</CardTitle>
           <Input
-            placeholder="🔍 Search by title or source..."
+            placeholder="Search by title or source..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="mt-4 border-border"
           />
         </CardHeader>
 
@@ -86,50 +85,35 @@ export default function FetcherList() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-gradient-to-r text-foreground to-muted border-b border-border hover:bg-card">
-                      <TableHead className="font-semibold text-foreground">
-                        Title
-                      </TableHead>
-                      <TableHead className="font-semibold text-foreground">
-                        Source
-                      </TableHead>
-                      <TableHead className="font-semibold text-foreground">
-                        AI Generated
-                      </TableHead>
-                      <TableHead className="font-semibold text-foreground">
-                        Queued
-                      </TableHead>
-                      <TableHead className="font-semibold text-foreground">
-                        Date
-                      </TableHead>
+                    <TableRow className="border-b border-border/40 hover:bg-transparent">
+                      <TableHead className="font-semibold text-foreground">Title</TableHead>
+                      <TableHead className="font-semibold text-foreground">Source</TableHead>
+                      <TableHead className="font-semibold text-foreground">AI Generated</TableHead>
+                      <TableHead className="font-semibold text-foreground">Queued</TableHead>
+                      <TableHead className="font-semibold text-foreground">Date</TableHead>
                     </TableRow>
                   </TableHeader>
 
                   <TableBody>
-                    {currentPageData.map((item, idx) => (
-                      <TableRow
-                        key={item._id}
-                        className={`border-b border-border hover:bg-muted/80 transition-colors ${
-                          idx % 2 === 0 ? "bg-background" : "bg-muted/20"
-                        }`}
-                      >
-                        <TableCell className="font-semibold text-foreground max-w-sm truncate">
+                    {currentPageData.map((item) => (
+                      <TableRow key={item._id} className="border-b border-border/40 hover:bg-muted/40 transition-colors">
+                        <TableCell className="font-medium text-foreground max-w-sm truncate text-sm">
                           {item.title}
                         </TableCell>
 
                         <TableCell>
-                          <Badge className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+                          <Badge variant="default" className="text-xs">
                             {item.source}
                           </Badge>
                         </TableCell>
 
                         <TableCell>
                           {item.aiGenerated ? (
-                            <Badge className="bg-gradient-to-r from-green-500 to-emerald-600 text-white">
+                            <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs">
                               ✓ Yes
                             </Badge>
                           ) : (
-                            <Badge className="bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200">
+                            <Badge variant="secondary" className="text-xs">
                               ○ No
                             </Badge>
                           )}
@@ -137,16 +121,18 @@ export default function FetcherList() {
 
                         <TableCell>
                           {item.isQueued ? (
-                            <Badge className="bg-gradient-to-r from-yellow-500 to-amber-600 text-white">
+                            <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 text-xs">
                               ⏳ Queued
                             </Badge>
                           ) : (
-                            <Badge className="bg-card bg-muted">-</Badge>
+                            <Badge variant="secondary" className="text-xs">
+                              -
+                            </Badge>
                           )}
                         </TableCell>
 
-                        <TableCell className="text-muted-foreground text-sm">
-                          {new Date(item.createdAt).toLocaleString()}
+                        <TableCell className="text-muted-foreground text-xs">
+                          {new Date(item.createdAt).toLocaleDateString()}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -155,17 +141,17 @@ export default function FetcherList() {
               </div>
 
               {/* Pagination Controls */}
-              <div className="flex items-center justify-between mt-8 pt-6 border-t border-border">
+              <div className="flex items-center justify-between mt-8 pt-6 border-t border-border/40">
                 <Button
                   onClick={prevPage}
                   disabled={page === 1}
                   variant="outline"
-                  className="border-border hover:bg-card"
+                  size="sm"
                 >
                   ← Previous
                 </Button>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                   {[...Array(Math.min(totalPages, 5))].map((_, i) => {
                     const pageNum = page > 3 ? page - 2 + i : i + 1;
                     if (pageNum > totalPages) return null;
@@ -173,11 +159,8 @@ export default function FetcherList() {
                       <Button
                         key={pageNum}
                         variant={page === pageNum ? "default" : "outline"}
-                        className={`px-4 ${
-                          page === pageNum
-                            ? "bg-gradient-to-r from-blue-500 to-blue-600"
-                            : "border-border hover:bg-card"
-                        }`}
+                        size="sm"
+                        className="px-3"
                         onClick={() => setPage(pageNum)}
                       >
                         {pageNum}
@@ -190,23 +173,20 @@ export default function FetcherList() {
                   onClick={nextPage}
                   disabled={page === totalPages}
                   variant="outline"
-                  className="border-border hover:bg-card"
+                  size="sm"
                 >
                   Next →
                 </Button>
               </div>
 
-              <div className="mt-6 p-4 bg-muted rounded-lg border border-border text-sm text-muted-foreground">
-                📊 Showing {currentPageData.length} of {filtered.length} records
-                (Page {page} of {totalPages})
+              <div className="mt-6 p-3 bg-muted/50 rounded-lg border border-border/40 text-xs text-muted-foreground">
+                Showing {currentPageData.length} of {filtered.length} records (Page {page} of {totalPages})
               </div>
             </>
           ) : (
             <div className="text-center py-12">
-              <p className="text-lg bg-muted">No records found</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Try adjusting your search filters
-              </p>
+              <p className="text-sm font-medium text-muted-foreground">No records found</p>
+              <p className="text-xs text-muted-foreground mt-1">Try adjusting your search filters</p>
             </div>
           )}
         </CardContent>
