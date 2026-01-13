@@ -17,17 +17,10 @@ export default function AIPosts() {
   const [editText, setEditText] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const statusColors = {
-    draft: "bg-slate-500",
-    queued: "bg-yellow-500",
-    posted: "bg-green-600",
-    failed: "bg-red-500",
-  };
 
   function removeUrls(text) {
-  return text.replace(/https?:\/\/\S+/g, "").trim();
+    return text.replace(/https?:\/\/\S+/g, "").trim();
   }
-
 
   // -------- FETCH POSTS ----------
   useEffect(() => {
@@ -65,7 +58,7 @@ export default function AIPosts() {
         title: editTitle,
         text: cleanedText,
       });
-  
+
       const mergedPost = {
         ...selectedPost,
         ...updated,
@@ -93,8 +86,12 @@ export default function AIPosts() {
   return (
     <div className="space-y-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground">AI Generated Posts</h1>
-        <p className="text-sm text-muted-foreground mt-1">Review, edit and manage AI content</p>
+        <h1 className="text-3xl font-bold text-foreground">
+          AI Generated Posts
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Review, edit and manage AI content
+        </p>
       </div>
 
       {/* LIST */}
@@ -110,7 +107,9 @@ export default function AIPosts() {
 
         {!loading && posts.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-sm text-muted-foreground">No AI posts generated yet.</p>
+            <p className="text-sm text-muted-foreground">
+              No AI posts generated yet.
+            </p>
           </div>
         )}
 
@@ -124,12 +123,17 @@ export default function AIPosts() {
               <CardContent className="p-4 space-y-2">
                 <div className="flex justify-between items-start gap-3">
                   <h3 className="font-semibold text-sm flex-1">{post.title}</h3>
-                  <Badge className={`flex-shrink-0 text-xs ${
-                    post.status === 'draft' ? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' :
-                    post.status === 'posted' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                    post.status === 'queued' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                  }`}>
+                  <Badge
+                    className={`flex-shrink-0 text-xs ${
+                      post.status === "draft"
+                        ? "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                        : post.status === "posted"
+                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                        : post.status === "queued"
+                        ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                        : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                    }`}
+                  >
                     {post.status.toUpperCase()}
                   </Badge>
                 </div>
@@ -204,7 +208,9 @@ export default function AIPosts() {
                 </>
               ) : (
                 <>
-                  <h2 className="text-lg font-semibold pr-6">{selectedPost.title}</h2>
+                  <h2 className="text-lg font-semibold pr-6">
+                    {selectedPost.title}
+                  </h2>
 
                   <p className="whitespace-pre-line bg-muted/40 p-3 rounded-lg text-sm">
                     {selectedPost.text}
