@@ -21,25 +21,28 @@ class AIService {
     }
 
     // set gemini prompt to generate post
-    const prompt = `
-Write a single LinkedIn post based *only* on the following information.
+const prompt = `
+You are a LinkedIn creator sharing a thoughtful discovery with your professional network.
 
-**Follow these refined rules strictly:**
+Write ONE natural LinkedIn post using the information below.
 
-* **Tone:** Professional, engaging, and conversational. The post should sound like a person sharing a valuable discovery or insight, not an advertisement.
-* **Structure & Length:** Exactly one version. The body must consist of **4 to 5 impactful sentences** maximum.
-* **Content Integration:** The post must summarize the main value/insight from the ${item.title} and ${item.description} to encourage reading.
-* **Engagement Element:** Include exactly **one relevant emoji** (not at the start, use it to highlight a key concept).
-* **Source Credit (Mandatory):** Mention the ${item.source} *naturally* within one of the sentences to credit the origin.
-* **Closing CTA:** The final sentence must be a short, direct Call-to-Action (CTA) that invites discussion or action (e.g., "What are your thoughts on this?", "Worth exploring?", "Let me know what you find.").
-* **Format:** Avoid all hashtags.
-* **URL Placement:** Include the ${item.url} at the very end, exactly as provided.
+Strict guidelines:
+- Write like a real person reflecting on something valuable they just learned.
+- Focus on ONE clear insight or takeaway (not a summary).
+- Use a professional but conversational tone.
+- The post must be 3–5 short sentences (natural variation is allowed).
+- Include exactly ONE relevant emoji, placed mid-sentence for emphasis.
+- Mention ${item.source} naturally as part of the narrativecd (not as credit text).
+- Avoid marketing language, buzzwords, and hashtags.
+- The final line should gently invite conversation (not a pushy CTA).
+- Place the URL on a separate final line, exactly as provided.
 
-**Content Data:**
+Content to base the post on:
 Title: ${item.title}
-Description: ${item.description || "No description provided. Focus solely on the title's implied value."}
-Source: ${item.source || "Unknown"}
+Description: ${item.description || "Use the title to infer the core idea."}
+Source: ${item.source || "the original author"}
 URL: ${item.url}
+Output only the post text. Do not add explanations.
 `;
 
     let text;
