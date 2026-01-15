@@ -15,58 +15,58 @@ new Worker(
     const post = await GeneratedPost.findById(postId);
     if (!post) throw new Error("GeneratedPost not found");
 
-    if (post.status === "posted") {
-      logger.warn("Post already published", postId);
+    if (post.status !== "queued") {
+      logger.warn("Post not in queued state", {
+        postId,
+        status: post.status,
+      });
       return;
     }
 
-    post.status = "queued";
-    await post.save();
-try {
-  const result = await publishToLinkedIn({
-    text: post.text,
-  });
+    try {
+      const result = await publishToLinkedIn({
+        text: post.text,
+      });
 
-  const linkedinUrn =
-    result.data?.id ||
-    result.data?.value ||
-    result.data?.urn;
+      const linkedinUrn =
+        result.data?.id ||
+        result.data?.value ||
+        result.data?.urn;
 
-  if (!linkedinUrn) {
-    throw new Error("LinkedIn did not return post URN");
-  }
+      if (!linkedinUrn) {
+        throw new Error("LinkedIn did not return post URN");
+      }
 
-  post.status = "posted";
-  post.postedAt = new Date();
-  post.linkedinPostUrn = linkedinUrn;
-  post.error = null;
+      post.status = "posted";
+      post.postedAt = new Date();
+      post.linkedinPostUrn = linkedinUrn;
+      post.error = null;
 
-  post.markModified("linkedinPostUrn");
-  post.markModified("postedAt");
-  post.markModified("error");
+      await post.save();
 
-  await post.save();
+      logger.info("LinkedIn post published", {
+        postId,
+        linkedinUrn,
+      });
 
-  logger.info("LinkedIn post published", {
-    postId,
-    linkedinUrn,
-  });
+    } catch (err) {
+      post.status = "failed";
+      post.error = JSON.stringify(
+        err?.response?.data || { message: err.message }
+      );
 
-} catch (err) {
-  post.status = "failed";
-  post.error = err?.response?.data?.message || err.message;
+      await post.save();
 
-  post.markModified("error");
-  await post.save();
+      logger.error("LinkedIn post failed", {
+        postId,
+        error: post.error,
+      });
 
-  logger.error("LinkedIn post failed", {
-    postId,
-    error: post.error,
-  });
-
-  throw err;
-}
-
+      throw err;
+    }
   },
-  { connection }
+  {
+    connection,
+    concurrency: 1,
+  }
 );

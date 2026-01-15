@@ -11,6 +11,7 @@ export async function enqueueLinkedInPost(postId) {
     JOB_TYPES.POST_TO_LINKEDIN,
     { postId },
     {
+      jobId: `linkedin-post-${postId}`, 
       attempts: 3,
       backoff: {
         type: "exponential",

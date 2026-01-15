@@ -1,61 +1,42 @@
-import { enqueueLinkedInPost } from "../queue/linkedin.queue.js";
 import GeneratedPost from "../models/generatedPost.model.js";
-import { publishToLinkedIn } from "../modules/publisher/linkedin.publisher.js";
+import { enqueueLinkedInPost } from "../queue/linkedin.queue.js";
 
-
-export async function postGenerated(req, res) {
+export async function publishGeneratedPost(req, res) {
   try {
-    const { postId } = req.body;
+    const { id } = req.params;
 
-    await enqueueLinkedInPost(postId);
-
-    res.json({
-      success: true,
-      message: "Post queued for LinkedIn",
-    });
-
-  } catch (err) {
-    res.status(400).json({
-      success: false,
-      error: err.message,
-    });
-  }
-}
-
-// this  is  for a test  single post  to run manually
-export async function publishOneDraftPost(req, res) {
-  try {
-    const post = await GeneratedPost.findOneAndUpdate(
-      { status: "draft" },
-      { $set: { status: "publishing" } },
-      { sort: { createdAt: 1 }, returnDocument: "after" }
-    );
+    const post = await GeneratedPost.findById(id);
 
     if (!post) {
-      return res.json({
-        success: true,
-        message: "No draft posts available"
+      return res.status(404).json({
+        success: false,
+        message: "Post not found",
       });
     }
 
-    const result = await publishToLinkedIn({
-      text: post.text
-    });
+    if (post.status !== "draft") {
+      return res.status(400).json({
+        success: false,
+        message: `Post is already ${post.status}`,
+      });
+    }
 
-    post.status = "posted";
+    
+    post.status = "queued";
     await post.save();
 
-    return res.json({
+    await enqueueLinkedInPost(post._id);
+
+    return res.status(202).json({
       success: true,
-      posted: true,
-      postId: post._id,
-      linkedin: result.data
+      message: "Post queued for LinkedIn",
+      data: post,
     });
 
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: err?.response?.data || err.message
+      message: err.message,
     });
   }
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PostSkeleton } from "@/components/ui/PostSkeleton";
+import { postToLinkedIn } from "@/api/publisher.api";
 import { fetchAIPosts, updateAIPost } from "@/api/aiPosts.api";
 import { toast } from "sonner";
 
@@ -15,8 +16,39 @@ export default function AIPosts() {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editText, setEditText] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [posting, setPosting] = useState(false);
 
+  const canPostToLinkedIn =
+    selectedPost && selectedPost.status === "draft" && !isEditing && !posting;
+
+  //  ------------------ Post To Linkedin ---------------------
+  async function handlePostToLinkedIn() {
+    if (!selectedPost || posting) return;
+
+    try {
+      setPosting(true);
+
+      await postToLinkedIn(selectedPost._id);
+
+      const updatedPost = {
+        ...selectedPost,
+        status: "queued",
+      };
+
+      setPosts((prev) =>
+        prev.map((p) => (p._id === updatedPost._id ? updatedPost : p))
+      );
+
+      setSelectedPost(updatedPost);
+
+      toast.success("Post queued for LinkedIn 🚀");
+    } catch (err) {
+      toast.error(err.message || "Failed to post on LinkedIn");
+    } finally {
+      setPosting(false);
+    }
+  }
 
   function removeUrls(text) {
     return text.replace(/https?:\/\/\S+/g, "").trim();
@@ -46,7 +78,7 @@ export default function AIPosts() {
   // -------- SAVE EDIT ----------
   async function handleSave() {
     try {
-      setSaving(true);
+      setSavingEdit(true);
 
       const cleanedText = removeUrls(editText);
 
@@ -76,7 +108,7 @@ export default function AIPosts() {
     } catch (err) {
       toast.error(err.message || "Failed to update post");
     } finally {
-      setSaving(false);
+      setSavingEdit(false);
     }
   }
 
@@ -246,12 +278,13 @@ export default function AIPosts() {
                   ) : (
                     <>
                       <button
-                        disabled={saving}
+                        disabled={savingEdit}
                         onClick={handleSave}
-                        className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg ..."
                       >
-                        {saving ? "Saving..." : "Save"}
+                        {savingEdit ? "Saving..." : "Save"}
                       </button>
+
                       <button
                         onClick={() => setIsEditing(false)}
                         className="px-3 py-1.5 text-xs border border-border/40 rounded-lg hover:bg-muted transition-colors"
@@ -259,6 +292,15 @@ export default function AIPosts() {
                         Cancel
                       </button>
                     </>
+                  )}
+                  {canPostToLinkedIn && (
+                    <button
+                      onClick={handlePostToLinkedIn}
+                      disabled={posting}
+                      className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg ..."
+                    >
+                      {posting ? "Posting..." : "Post to LinkedIn"}
+                    </button>
                   )}
                 </div>
               )}
