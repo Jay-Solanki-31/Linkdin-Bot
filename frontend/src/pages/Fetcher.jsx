@@ -10,7 +10,7 @@ const sources = [
   { id: "devto", label: "Dev.to", icon: "📝", color: "from-slate-500 to-slate-700 dark:from-slate-600 dark:to-slate-900", lightBg: "from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700" },
   { id: "medium", label: "Medium", icon: "📰", color: "from-slate-500 to-slate-700 dark:from-slate-600 dark:to-slate-900", lightBg: "from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700" },
   { id: "npm", label: "NPM", icon: "📦", color: "from-red-500 to-red-600 dark:from-red-600 dark:to-red-700", lightBg: "from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20" },
-  { id: "hackernews", label: "Hacker News", icon: "🔥", color: "from-orange-500 to-orange-600", lightBg: "from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20" },
+  // { id: "hackernews", label: "Hacker News", icon: "🔥", color: "from-orange-500 to-orange-600", lightBg: "from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20" },
 ];
 
 export default function Fetcher() {

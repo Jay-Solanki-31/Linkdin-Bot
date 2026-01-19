@@ -1,6 +1,6 @@
 
 import * as devto from "./sources/devto.js";
-import * as hackernews from "./sources/hackernews.js";
+// import * as hackernews from "./sources/hackernews.js";
 import * as medium from "./sources/medium.js";
 import * as github from "./sources/github.js";
 import * as npmSource from "./sources/npm.js";
@@ -8,10 +8,10 @@ import * as npmSource from "./sources/npm.js";
 
 const SOURCES = {
   devto,
-  hackernews,
   medium,
   github,
   npm: npmSource,
+  // hackernews,ubbu
 };
 
 async function run(sourceKey, params = {}) {
