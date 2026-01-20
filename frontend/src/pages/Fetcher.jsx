@@ -4,13 +4,18 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { Github, BookOpen, Newspaper, Package, Hash, Mail, Zap } from "lucide-react";
+import { SiReddit } from "react-icons/si";
 
 const sources = [
-  { id: "github", label: "GitHub", icon: "🐙", color: "from-gray-600 to-gray-800 dark:from-gray-700 dark:to-gray-900", lightBg: "from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700" },
-  { id: "devto", label: "Dev.to", icon: "📝", color: "from-slate-500 to-slate-700 dark:from-slate-600 dark:to-slate-900", lightBg: "from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700" },
-  { id: "medium", label: "Medium", icon: "📰", color: "from-slate-500 to-slate-700 dark:from-slate-600 dark:to-slate-900", lightBg: "from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700" },
-  { id: "npm", label: "NPM", icon: "📦", color: "from-red-500 to-red-600 dark:from-red-600 dark:to-red-700", lightBg: "from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20" },
-  // { id: "hackernews", label: "Hacker News", icon: "🔥", color: "from-orange-500 to-orange-600", lightBg: "from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20" },
+  { id: "github", label: "GitHub", icon: <Github className="w-6 h-6" />, color: "from-gray-600 to-gray-800 dark:from-gray-700 dark:to-gray-900", lightBg: "from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700" },
+  { id: "devto", label: "Dev.to", icon: <BookOpen className="w-6 h-6" />, color: "from-slate-500 to-slate-700 dark:from-slate-600 dark:to-slate-900", lightBg: "from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700" },
+  { id: "medium", label: "Medium", icon: <Newspaper className="w-6 h-6" />, color: "from-slate-500 to-slate-700 dark:from-slate-600 dark:to-slate-900", lightBg: "from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700" },
+  { id: "npm", label: "NPM", icon: <Package className="w-6 h-6" />, color: "from-red-500 to-red-600 dark:from-red-600 dark:to-red-700", lightBg: "from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20" },
+  { id: "hashnode", label: "Hashnode", icon: <Hash className="w-6 h-6" />, color: "from-slate-500 to-slate-700 dark:from-slate-600 dark:to-slate-900", lightBg: "from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700" },
+  { id: "nodeweekly", label: "Node Weekly", icon: <Mail className="w-6 h-6" />, color: "from-slate-500 to-slate-700 dark:from-slate-600 dark:to-slate-900", lightBg: "from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700" },
+  { id: "reddit", label: "Reddit", icon: <SiReddit className="w-6 h-6" />, color: "from-slate-500 to-slate-700 dark:from-slate-600 dark:to-slate-900", lightBg: "from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700" }, 
+  { id: "dailydev", label: "Daily Dev", icon: <Zap className="w-6 h-6" />, color: "from-slate-500 to-slate-700 dark:from-slate-600 dark:to-slate-900", lightBg: "from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700" },
 ];
 
 export default function Fetcher() {

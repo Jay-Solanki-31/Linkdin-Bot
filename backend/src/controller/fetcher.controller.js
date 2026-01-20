@@ -1,6 +1,7 @@
 
 import { fetcherQueue } from "../queue/fetcher.queue.js";
 import FetchedContent from "../models/fetchedContent.model.js";
+import FetcherService from "../modules/fetchers/fetcher.service.js";
 
 export const startFetch = async (req, res) => {
   const { source } = req.params;
@@ -9,7 +10,17 @@ export const startFetch = async (req, res) => {
     return res.status(400).json({ success: false, message: "Source is required" });
   }
 
-  const job = await fetcherQueue.add("fetch-job", { source });
+  // Validate source
+  const validSources = FetcherService.getAvailableSources();
+  if (!validSources.includes(source)) {
+    return res.status(400).json({
+      success: false,
+      message: `Invalid source. Valid sources: ${validSources.join(", ")}`,
+    });
+  }
+
+  // Use standardized job type FETCH_CONTENT
+  const job = await fetcherQueue.add("FETCH_CONTENT", { source });
 
   return res.json({
     message: `Fetch job added for ${source}`,
