@@ -1,6 +1,6 @@
 export default async function fetchReddit({ topic = "nodejs" } = {}) {
   try {
-    const url = `https://www.reddit.com/r/${encodeURIComponent(topic)}/hot.json?limit=10`;
+    const url = `https://www.reddit.com/r/${encodeURIComponent(topic)}/hot.json?limit=5`;
 
     const res = await fetch(url, {
       headers: {

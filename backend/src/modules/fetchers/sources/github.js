@@ -16,7 +16,7 @@ export default async function fetchGithub() {
     const $ = cheerio.load(response.data);
     const results = [];
 
-    $("article.Box-row").slice(0, 10).each((_, el) => {
+    $("article.Box-row").slice(0, 5).each((_, el) => {
       const titleEl = $(el).find("h2 a");
       const repoPath = titleEl.attr("href");
       if (!repoPath) return;

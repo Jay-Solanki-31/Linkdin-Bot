@@ -1,6 +1,6 @@
 export default async function fetchHashnode({ topic = "nodejs" } = {}) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000);
+  const timeout = setTimeout(() => controller.abort(), 20000);
 
   try {
     const query = `
@@ -41,7 +41,6 @@ export default async function fetchHashnode({ topic = "nodejs" } = {}) {
     }
 
     const edges = json.data.tag.posts.edges;
-
     return edges.map((edge) => ({
       title: edge.node.title,
       url: edge.node.url,

@@ -4,11 +4,15 @@ const parser = new Parser();
 export default async function fetchMedium({ topic = "programming" } = {}) {
   try {
     const feedUrl = `https://medium.com/feed/topic/${encodeURIComponent(topic)}`;
+    console.log('feedUrl============>', feedUrl);
     const feed = await parser.parseURL(feedUrl);
+    console.log('feed============>', feed);
     
     if (!feed?.items) return [];
 
-    return feed.items.slice(0, 8).map((it) => ({
+    console.log('feed.items============>', feed.items);
+
+    return feed.items.slice(0, 5).map((it) => ({
       title: it.title,
       url: it.link,
       summary: it.contentSnippet || null,

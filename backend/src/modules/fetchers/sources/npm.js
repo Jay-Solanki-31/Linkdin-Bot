@@ -3,7 +3,7 @@ import axios from "axios";
 export default async function fetchNpm() {
   try {
     const res = await axios.get(
-      "https://registry.npmjs.org/-/v1/search?text=nodejs&size=10",
+      "https://registry.npmjs.org/-/v1/search?text=nodejs&size=5",
       { timeout: 10000 }
     );
 
