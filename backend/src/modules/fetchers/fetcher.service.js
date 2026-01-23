@@ -1,4 +1,3 @@
-import fetchDailydev from "./sources/dailydev.js";
 import fetchDevto from "./sources/devto.js";
 import github from "./sources/github.js";
 import fetchHashnode from "./sources/hashnode.js";
@@ -25,8 +24,6 @@ class FetcherService {
         return fetchNodeweekly(params);
       case "reddit":
         return fetchReddit(params);
-      case "dailydev":
-        return fetchDailydev(params);
       default:
         throw new Error("Invalid source passed to fetcher service");
     }
@@ -34,7 +31,7 @@ class FetcherService {
 
   // Get list of available sources
   getAvailableSources() {
-    return ["devto", "medium", "github", "npm", "hashnode", "nodeweekly", "reddit", "dailydev",];
+    return ["devto", "medium", "github", "npm", "hashnode", "nodeweekly", "reddit"];
   }
 }
 

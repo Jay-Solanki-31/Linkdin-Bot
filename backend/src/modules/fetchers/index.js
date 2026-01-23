@@ -5,7 +5,6 @@ import * as npmSource from "./sources/npm.js";
 import * as hashnode from "./sources/hashnode.js";
 import * as nodeweekly from "./sources/nodeweekly.js";
 import * as reddit from "./sources/reddit.js";
-import * as dailydev from "./sources/dailydev.js";
 
 const SOURCES = {
   devto,
@@ -15,7 +14,6 @@ const SOURCES = {
   hashnode,
   nodeweekly,
   reddit,
-  dailydev,
 };
 //  needd hackernews add in sources 
 async function run(sourceKey, params = {}) {

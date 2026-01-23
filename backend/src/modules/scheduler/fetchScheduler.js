@@ -9,7 +9,7 @@ export const startFetchScheduler = () => {
     try {
       logger.info("Fetch Scheduler triggered — queuing fetch jobs");
 
-      const sources = ["devto", "github", "medium", "npm", "hashnode", "nodeweekly", "reddit", "dailydev"];
+      const sources = ["devto", "github", "medium", "npm", "hashnode", "nodeweekly", "reddit"];
 
       for (const source of sources) {
         await fetcherQueue.add("FETCH_CONTENT", { source });

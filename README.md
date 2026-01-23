@@ -280,7 +280,7 @@ frontend/
 
 **Process**:
 1. `fetchScheduler.js` triggers → Adds jobs to `fetcherQueue`
-2. For each source (devto, medium, github, npm, hashnode, nodeweekly, reddit, dailydev):
+2. For each source (devto, medium, github, npm, hashnode, nodeweekly, reddit):
    - `fetcher.worker.js` processes the job
    - Source-specific scraper fetches articles (RSS or web scraping)
    - `normalizer.js` standardizes content structure
@@ -560,7 +560,6 @@ npm run preview
 | `POST` | `/api/hashnode` | Fetch articles from Hashnode |
 | `POST` | `/api/nodeweekly` | Fetch Node.js weekly newsletter |
 | `POST` | `/api/reddit` | Fetch posts from Reddit |
-| `POST` | `/api/dailydev` | Fetch stories from Daily Dev |
 | `GET` | `/api/fetch` | Get all fetched articles |
 
 ### AI Post Generation
