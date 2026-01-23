@@ -4,7 +4,7 @@ export default async function fetchDevto({ topic = "node" } = {}) {
   try {
     const url = `https://dev.to/api/articles?tag=${encodeURIComponent(
       topic
-    )}&per_page=10`;
+    )}&per_page=5`;
 
     const res = await axios.get(url, {
       timeout: 10000,
