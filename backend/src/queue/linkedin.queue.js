@@ -3,10 +3,14 @@ import { redisConnection } from "./connection.js";
 import { JOB_TYPES } from "./jobTypes.js";
 
 export const linkedinQueue = new Queue("linkedin-queue", {
-  connection:redisConnection.connection
+  connection: redisConnection
 });
 
 export async function enqueueLinkedInPost(postId) {
+  if (!postId) {
+    throw new Error("postId is required");
+  }
+  
   return linkedinQueue.add(
     JOB_TYPES.POST_TO_LINKEDIN,
     { postId },

@@ -1,57 +1,66 @@
-import cron from "node-cron";
-import GeneratedPost from "../../models/generatedPost.model.js";
-import { enqueueLinkedInPost } from "../../queue/linkedin.queue.js";
+import { Worker } from "bullmq";
+import { redisConnection } from "../../queue/connection.js";
+import aiService from "../../modules/ai/ai.service.js";
+import FetchedContent from "../../models/fetchedContent.model.js";
 import logger from "../../utils/logger.js";
 
-/**
- * Runs only on Tue–Thu at:
- * 08:30, 12:30, 17:30
- */
-export const startLinkedInScheduler = () => {
-  logger.info("LinkedIn Scheduler starting");
+export const startLinkedInScheduler = () => new Worker(
+  "ai-processing-queue",
+  async (job) => {
+    const { contentId } = job.data;
+    logger.info("AI Worker processing", contentId);
 
-  // ───────── 08:30 AM ─────────
-  cron.schedule("30 8 * * 2-4", () => runPosting("08:30"));
-
-  // ───────── 12:30 PM ─────────
-  cron.schedule("30 12 * * 2-4", () => runPosting("12:30"));
-
-  // ───────── 05:30 PM ─────────
-  cron.schedule("30 17 * * 2-4", () => runPosting("17:30"));
-
-  logger.info("LinkedIn Scheduler started (Tue–Thu)");
-};
-
-async function runPosting(slot) {
-  try {
-    logger.info(`LinkedIn Scheduler: checking posts for ${slot}`);
-
-    const post = await GeneratedPost.findOneAndUpdate(
+    const doc = await FetchedContent.findOneAndUpdate(
+      { _id: contentId, processing: { $ne: true } },
       {
-        status: "draft"
+        $set: {
+          processing: true,
+          processingAt: new Date(),
+          isQueued: true,
+          aiError: null,
+        },
       },
-      {
-        $set: { status: "queued" }
-      },
-      {
-        sort: { createdAt: 1 },
-        returnDocument: "after"
-      }
+      { new: true }
     );
 
-    if (!post) {
-      logger.info("LinkedIn Scheduler: no draft posts");
+    if (!doc) {
+      logger.warn("AI Worker skipped (locked or missing)", contentId);
       return;
     }
 
-    await enqueueLinkedInPost(post._id.toString());
+    try {
+      const res = await aiService.generateForContent(contentId);
+      if (!res) throw new Error("AI returned empty response");
 
-    logger.info("LinkedIn Scheduler: queued post", {
-      postId: post._id,
-      slot
-    });
+      await FetchedContent.findByIdAndUpdate(contentId, {
+        $set: {
+          processing: false,
+          processingAt: null,
+          aiGenerated: true,
+          status: "generated",
+        },
+      });
 
-  } catch (err) {
-    logger.error("LinkedIn Scheduler error:", err?.message || err);
+      logger.info("AI Worker success", contentId);
+      return { ok: true };
+
+    } catch (err) {
+      logger.error("AI Worker failed", err.message);
+
+      await FetchedContent.findByIdAndUpdate(contentId, {
+        $set: {
+          processing: false,
+          processingAt: null,
+          isQueued: false,
+          aiError: err.message?.slice(0, 512) || "unknown",
+        },
+      });
+
+      throw err;
+    }
+  },
+  {
+    connection: redisConnection.connection,
+    concurrency: 1,
   }
-}
+);

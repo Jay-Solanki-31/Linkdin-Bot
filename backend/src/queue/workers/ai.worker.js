@@ -8,7 +8,7 @@ const worker = new Worker(
   "ai-processing-queue",
   async (job) => {
     const { contentId } = job.data;
-    logger.info("AI Worker: processing job", job.id, "contentId", contentId);
+    logger.info("AI Worker processing", contentId);
 
     const doc = await FetchedContent.findOneAndUpdate(
       { _id: contentId, processing: { $ne: true } },
@@ -24,22 +24,28 @@ const worker = new Worker(
     );
 
     if (!doc) {
-      logger.warn("AI Worker: content locked or missing:", contentId);
+      logger.warn("AI Worker skipped (locked or missing)", contentId);
       return;
     }
 
     try {
       const res = await aiService.generateForContent(contentId);
+      if (!res) throw new Error("AI returned empty response");
 
-      if (!res) {
-        throw new Error("AI returned empty response");
-      }
+      await FetchedContent.findByIdAndUpdate(contentId, {
+        $set: {
+          processing: false,
+          processingAt: null,
+          aiGenerated: true,
+          status: "generated",
+        },
+      });
 
-      logger.info("AI Worker: generated content for", contentId);
+      logger.info("AI Worker success", contentId);
       return { ok: true };
 
     } catch (err) {
-      logger.error("AI Worker: job failed", job.id, err?.message || err);
+      logger.error("AI Worker failed", err.message);
 
       await FetchedContent.findByIdAndUpdate(contentId, {
         $set: {
@@ -50,7 +56,7 @@ const worker = new Worker(
         },
       });
 
-      throw err; 
+      throw err;
     }
   },
   {
@@ -58,13 +64,5 @@ const worker = new Worker(
     concurrency: 1,
   }
 );
-
-worker.on("completed", (job) => {
-  logger.info("AI Worker: job completed", job.id);
-});
-
-worker.on("failed", (job, err) => {
-  logger.error("AI Worker: job failed", job.id, err?.message || err);
-});
 
 export default worker;

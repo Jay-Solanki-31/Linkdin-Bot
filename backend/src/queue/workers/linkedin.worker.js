@@ -11,22 +11,17 @@ new Worker(
     if (job.name !== JOB_TYPES.POST_TO_LINKEDIN) return;
 
     const { postId } = job.data;
-
     const post = await GeneratedPost.findById(postId);
-    if (!post) throw new Error("GeneratedPost not found");
+
+    if (!post) throw new Error("Post not found");
 
     if (post.status !== "queued") {
-      logger.warn("Post not in queued state", {
-        postId,
-        status: post.status,
-      });
+      logger.warn("Invalid post state", post.status);
       return;
     }
 
     try {
-      const result = await publishToLinkedIn({
-        text: post.text,
-      });
+      const result = await publishToLinkedIn({ text: post.text });
 
       const linkedinUrn =
         result.data?.id ||
@@ -34,34 +29,30 @@ new Worker(
         result.data?.urn;
 
       if (!linkedinUrn) {
-        throw new Error("LinkedIn did not return post URN");
+        throw new Error("LinkedIn URN missing");
       }
 
       post.status = "posted";
       post.postedAt = new Date();
       post.linkedinPostUrn = linkedinUrn;
+      post.processing = false;
+      post.processingAt = null;
       post.error = null;
 
       await post.save();
 
-      logger.info("LinkedIn post published", {
-        postId,
-        linkedinUrn,
-      });
+      logger.info("LinkedIn post published", postId);
 
     } catch (err) {
       post.status = "failed";
+      post.processing = false;
+      post.processingAt = null;
       post.error = JSON.stringify(
         err?.response?.data || { message: err.message }
       );
 
       await post.save();
-
-      logger.error("LinkedIn post failed", {
-        postId,
-        error: post.error,
-      });
-
+      logger.error("LinkedIn post failed", postId);
       throw err;
     }
   },

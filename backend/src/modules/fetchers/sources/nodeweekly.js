@@ -7,7 +7,7 @@ export default async function fetchNodeweekly() {
 
     if (!Array.isArray(feed?.items)) return [];
 
-    return feed.items.slice(0, 5).map((it) => ({
+    return feed.items.slice(0, 4).map((it) => ({
       title: it.title,
       url: it.link,
       summary: it.contentSnippet || null,

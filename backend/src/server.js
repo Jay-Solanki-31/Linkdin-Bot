@@ -13,6 +13,7 @@ import aiRoute from "./routes/ai.routes.js";
 import { startFetchScheduler } from "./modules/scheduler/fetchScheduler.js";
 import { startAIScheduler } from "./modules/scheduler/aiScheduler.js";
 import { startLinkedInScheduler } from "./modules/scheduler/linkedinScheduler.js";
+import { startSlotAllocatorScheduler}  from "./modules/scheduler/slotAllocator.scheduler.js";
 
 import linkedinAuthRoutes from "./routes/linkedinAuth.routes.js";
 
@@ -65,6 +66,7 @@ async function start() {
     await import("./queue/workers/fetcher.worker.js");
 
     startFetchScheduler(); 
+    startSlotAllocatorScheduler();
     startAIScheduler(); 
     startLinkedInScheduler();
 
