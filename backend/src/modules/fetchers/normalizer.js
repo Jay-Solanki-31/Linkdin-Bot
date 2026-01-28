@@ -6,9 +6,8 @@ export function normalizeArticle(raw, source) {
   const url =
     raw.url ||
     raw.link ||
-    raw.homepage ||
     raw.html_url ||
-    raw.repository?.url ||
+    raw.homepage ||
     raw.meta?.url ||
     null;
 
@@ -20,18 +19,19 @@ export function normalizeArticle(raw, source) {
     raw.brief ||
     raw.contentSnippet ||
     raw.selftext ||
-    null;
+    "";
 
   return {
     title: (raw.title || raw.name || "Untitled").trim(),
     url: url.trim(),
     source,
 
-    description: trimWords(rawDescription, 600), // 👈 100–150 words max
+    description: trimWords(rawDescription, 120),
 
     language: raw.language || null,
     tags: raw.tags || raw.tag_list || raw.keywords || [],
     timestamp: new Date(),
-    raw,
+
+    raw, 
   };
 }

@@ -5,12 +5,15 @@ export default async function fetchNodeweekly() {
   try {
     const feed = await parser.parseURL("https://nodeweekly.com/rss");
 
-    if (!Array.isArray(feed?.items)) return [];
-
     return feed.items.slice(0, 4).map((it) => ({
       title: it.title,
       url: it.link,
-      summary: it.contentSnippet || null,
+
+      summary: it.contentSnippet
+        ?.replace(/https?:\/\/\S+/g, "")
+        ?.replace(/\s+/g, " ")
+        ?.trim() || "",
+
       pubDate: it.pubDate,
       raw: it,
     }));

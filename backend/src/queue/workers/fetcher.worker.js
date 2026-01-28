@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { Worker } from "bullmq";
-import { redisConnection } from "../connection.js"; 
+import { redisConnection } from "../connection.js";
 import connectDB from "../../config/db.js";
 import fetcherService from "../../modules/fetchers/fetcher.service.js";
 import FetchedContent from "../../models/fetchedContent.model.js";
@@ -20,11 +20,19 @@ const worker = new Worker(
     if (!source) throw new Error("Missing 'source' in job data");
 
     const rawItems = await fetcherService.fetchFromSource(source, keyword);
-    logger.info(`Fetched ${Array.isArray(rawItems) ? rawItems.length : 0} items from ${source}`);
+    logger.info(
+      `Fetched ${Array.isArray(rawItems) ? rawItems.length : 0} items from ${source}`,
+    );
 
     const normalized = (Array.isArray(rawItems) ? rawItems : [])
       .map((it) => normalizeArticle(it, source))
-      .filter(Boolean);
+      .filter(Boolean)
+      .map((item) => ({
+        ...item,
+        description: item.description
+          ? item.description.split(" ").slice(0, 120).join(" ")
+          : null,
+      }));
 
     logger.info(`After normalization ${normalized.length} items`);
 
@@ -36,8 +44,21 @@ const worker = new Worker(
       for (const item of normalized) {
         const result = await FetchedContent.updateOne(
           { url: item.url },
-          { $setOnInsert: item },
-          { upsert: true }
+          {
+            $set: {
+              title: item.title,
+              description: item.description,
+              language: item.language,
+              source: item.source,
+              tags: item.tags,
+              timestamp: item.timestamp,
+            },
+            $setOnInsert: {
+              raw: item.raw,
+              status: "fetched",
+            },
+          },
+          { upsert: true },
         );
 
         if (result.upsertedId) {
@@ -47,7 +68,6 @@ const worker = new Worker(
 
       logger.info(`Saved ${normalized.length} normalized articles`);
       logger.info(`${newContentIds.length} new items added to DB.`);
-
     } catch (err) {
       logger.error("[DB Insert Error]", err?.message || err);
       if (!err?.writeErrors || err.writeErrors.length === 0) {
@@ -60,7 +80,7 @@ const worker = new Worker(
   {
     connection: redisConnection.connection,
     concurrency: 3,
-  }
+  },
 );
 
 worker.on("completed", (job) => {
