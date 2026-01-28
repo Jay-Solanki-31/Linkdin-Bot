@@ -4,44 +4,58 @@ import FetchedContent from "../../models/fetchedContent.model.js";
 import logger from "../../utils/logger.js";
 
 class AIService {
-  // process a single content id Used by worker
+  // Generate AI post for a specific content item
   async generateForContent(contentId) {
     const item = await FetchedContent.findById(contentId);
+
     if (!item) {
       logger.warn("AIService: content not found:", contentId);
       return null;
     }
 
-    // ensure this item isn't already aiGenerated
+    // Safety check: already generated
     if (item.aiGenerated) {
       logger.info("AIService: already generated for", contentId);
-      // ensure flags cleared
-      await FetchedContent.findByIdAndUpdate(contentId, { $set: { processing: false, processingAt: null, isQueued: false } });
+      await FetchedContent.findByIdAndUpdate(contentId, {
+        $set: { processing: false, processingAt: null, isQueued: false }
+      });
       return null;
     }
 
-    // set gemini prompt to generate post
-const prompt = `
+    const description =
+      item.description && item.description.length > 700
+        ? item.description.slice(0, 700)
+        : item.description;
+
+    const hasUsefulContext = description && description.length > 80;
+
+    const prompt = `
 You are a LinkedIn creator sharing a thoughtful discovery with your professional network.
 
 Write ONE natural LinkedIn post using the information below.
 
 Strict guidelines:
 - Write like a real person reflecting on something valuable they just learned.
-- Focus on ONE clear insight or takeaway (not a summary).
+- Do NOT summarize the content. React to one meaningful idea.
+- Focus on ONE clear insight or takeaway.
 - Use a professional but conversational tone.
-- The post must be 3–5 short sentences (natural variation is allowed).
+- Aim for 3–5 sentences. Each sentence should add a new thought.
 - Include exactly ONE relevant emoji, placed mid-sentence for emphasis.
-- Mention ${item.source} naturally as part of the narrativecd (not as credit text).
+- Mention ${item.source} naturally as part of the narrative (not as credit text).
 - Avoid marketing language, buzzwords, and hashtags.
 - The final line should gently invite conversation (not a pushy CTA).
 - Place the URL on a separate final line, exactly as provided.
 
 Content to base the post on:
 Title: ${item.title}
-Description: ${item.description || "Use the title to infer the core idea."}
+Description: ${
+      hasUsefulContext
+        ? description
+        : "Use the title to infer a single thoughtful takeaway."
+    }
 Source: ${item.source || "the original author"}
 URL: ${item.url}
+
 Output only the post text. Do not add explanations.
 `;
 
@@ -49,14 +63,28 @@ Output only the post text. Do not add explanations.
     try {
       text = await generateAIResponse(prompt);
     } catch (err) {
-      logger.error("Gemini API Error", err?.message || err);
+      logger.error("Gemini API Error:", err?.message || err);
+      await FetchedContent.findByIdAndUpdate(contentId, {
+        $set: {
+          processing: false,
+          processingAt: null,
+          isQueued: false,
+          aiError: "gemini_error"
+        }
+      });
       throw err;
     }
 
     if (!text) {
-      logger.warn("AIService: no response for", contentId);
-      // unqueue & clear processing so it can be retried later by scheduler
-      await FetchedContent.findByIdAndUpdate(contentId, { $set: { isQueued: false, processing: false, processingAt: null, aiError: "no_response" } });
+      logger.warn("AIService: empty response for", contentId);
+      await FetchedContent.findByIdAndUpdate(contentId, {
+        $set: {
+          processing: false,
+          processingAt: null,
+          isQueued: false,
+          aiError: "no_response"
+        }
+      });
       return null;
     }
 
@@ -65,32 +93,54 @@ Output only the post text. Do not add explanations.
         title: item.title,
         text,
         url: item.url,
-        source: item.source,
+        source: item.source
       });
 
-      // mark processed
       await FetchedContent.findByIdAndUpdate(contentId, {
-        $set: { aiGenerated: true, isQueued: false, processing: false, processingAt: null, aiError: null }
+        $set: {
+          aiGenerated: true,
+          processing: false,
+          processingAt: null,
+          isQueued: false,
+          aiError: null
+        }
       });
 
-      logger.info("AIService: generated for", contentId);
+      logger.info("AIService: successfully generated for", contentId);
       return text;
     } catch (err) {
-      logger.error("AIService: save error", err?.message || err);
-      // release locks
+      logger.error("AIService: save error:", err?.message || err);
       await FetchedContent.findByIdAndUpdate(contentId, {
-        $set: { processing: false, processingAt: null, isQueued: false, aiError: err.message?.slice(0, 512) || "save_error" }
+        $set: {
+          processing: false,
+          processingAt: null,
+          isQueued: false,
+          aiError: err.message?.slice(0, 512) || "save_error"
+        }
       });
       throw err;
     }
   }
 
-  // generate next unprocessed content keeps previous behavior for routes
+  // Pick next available content safely used by scheduler / worker
   async generateForNext() {
-    const item = await FetchedContent.findOne({ aiGenerated: false, isQueued: { $ne: true }, processing: { $ne: true } });
+    const item = await FetchedContent.findOne({
+      aiGenerated: false,
+      processing: { $ne: true },
+      $or: [{ isQueued: false }, { isQueued: { $exists: false } }]
+    });
+
     if (!item) return { status: "empty" };
-    // mark queued so scheduler doesn't requeue 
-    await FetchedContent.findByIdAndUpdate(item._id, { $set: { isQueued: true } });
+
+    // Lock immediately to avoid race conditions
+    await FetchedContent.findByIdAndUpdate(item._id, {
+      $set: {
+        isQueued: true,
+        processing: true,
+        processingAt: new Date()
+      }
+    });
+
     const text = await this.generateForContent(item._id.toString());
     return { id: item._id, text };
   }

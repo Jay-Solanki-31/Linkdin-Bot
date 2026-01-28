@@ -1,3 +1,4 @@
+import { trimWords } from "../../utils/trimText.js";
 
 export function normalizeArticle(raw, source) {
   if (!raw) return null;
@@ -11,15 +12,26 @@ export function normalizeArticle(raw, source) {
     raw.meta?.url ||
     null;
 
-  if (!url) return null; 
+  if (!url) return null;
+
+  const rawDescription =
+    raw.description ||
+    raw.summary ||
+    raw.brief ||
+    raw.contentSnippet ||
+    raw.selftext ||
+    null;
 
   return {
     title: (raw.title || raw.name || "Untitled").trim(),
     url: url.trim(),
     source,
-    tags: raw.tags || raw.keywords || [],
-    summary: raw.summary || raw.description || null,
-    fetchedAt: new Date(),
+
+    description: trimWords(rawDescription, 600), // 👈 100–150 words max
+
+    language: raw.language || null,
+    tags: raw.tags || raw.tag_list || raw.keywords || [],
+    timestamp: new Date(),
     raw,
   };
 }
