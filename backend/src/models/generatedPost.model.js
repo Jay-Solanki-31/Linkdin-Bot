@@ -5,7 +5,6 @@ const GeneratedPostSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "FetchedContent",
     required: true,
-    index: true
   },
 
   title: { type: String, default: "" },
@@ -25,4 +24,13 @@ const GeneratedPostSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
+GeneratedPostSchema.index({ articleId: 1 }, { unique: true });
+
+GeneratedPostSchema.index(
+  { linkedinPostUrn: 1 },
+  { unique: true, sparse: true }
+);
+
+
 export default mongoose.model("GeneratedPost", GeneratedPostSchema);
+

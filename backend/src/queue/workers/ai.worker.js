@@ -3,6 +3,9 @@ import { redisConnection } from "../connection.js";
 import aiService from "../../modules/ai/ai.service.js";
 import FetchedContent from "../../models/fetchedContent.model.js";
 import logger from "../../utils/logger.js";
+import { connectDB } from "../../config/db.js";
+
+await connectDB();
 
 const worker = new Worker(
   "ai-processing-queue",
@@ -10,32 +13,36 @@ const worker = new Worker(
     const { contentId } = job.data;
     logger.info("AI Worker processing", contentId);
 
-    const doc = await FetchedContent.findOneAndUpdate(
-      { _id: contentId, processing: { $ne: true } },
-      {
-        $set: {
-          processing: true,
-          processingAt: new Date(),
-          isQueued: true,
-          aiError: null,
-        },
-      },
-      { new: true }
-    );
+const doc = await FetchedContent.findOneAndUpdate(
+  {
+    _id: contentId,
+    processing: { $ne: true },
+  },
+  {
+    $set: {
+      processing: true,
+      processingAt: new Date(),
+      isQueued: true,
+      aiError: null,
+    },
+  },
+  { new: true }
+);
 
-    if (!doc) {
-      logger.warn("AI Worker skipped (locked or missing)", contentId);
-      return;
-    }
+if (!doc) {
+  logger.warn("AI Worker skipped (locked)", contentId);
+  return;
+}
 
     try {
-      const res = await aiService.generateForContent(contentId);
-      if (!res) throw new Error("AI returned empty response");
+      const text = await aiService.generateForContent(contentId);
+      if (!text) throw new Error("AI returned empty response");
 
       await FetchedContent.findByIdAndUpdate(contentId, {
         $set: {
           processing: false,
           processingAt: null,
+          isQueued: false,
           aiGenerated: true,
           status: "generated",
         },

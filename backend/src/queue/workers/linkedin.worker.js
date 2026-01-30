@@ -1,10 +1,12 @@
 import { Worker } from "bullmq";
-import connection from "../connection.js";
+import { redisConnection } from "../connection.js";
 import { JOB_TYPES } from "../jobTypes.js";
 import GeneratedPost from "../../models/generatedPost.model.js";
 import { publishToLinkedIn } from "../../modules/publisher/linkedin.publisher.js";
 import logger from "../../utils/logger.js";
+import { connectDB } from "../../config/db.js";
 
+await connectDB();
 new Worker(
   "linkedin-queue",
   async (job) => {
@@ -57,7 +59,18 @@ new Worker(
     }
   },
   {
-    connection,
+    connection: redisConnection.connection,
     concurrency: 1,
   }
 );
+
+process.on("unhandledRejection", (err) => {
+  console.error("[UNHANDLED REJECTION]", err);
+  process.exit(1);
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("[UNCAUGHT EXCEPTION]", err);
+  process.exit(1);
+});
+

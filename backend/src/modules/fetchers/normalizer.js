@@ -1,5 +1,4 @@
 import { trimWords } from "../../utils/trimText.js";
-
 export function normalizeArticle(raw, source) {
   if (!raw) return null;
 
@@ -25,9 +24,7 @@ export function normalizeArticle(raw, source) {
     title: (raw.title || raw.name || "Untitled").trim(),
     url: url.trim(),
     source,
-
-    description: trimWords(rawDescription, 120),
-
+    description: trimWords(rawDescription, 60),
     language: raw.language || null,
     tags: raw.tags || raw.tag_list || raw.keywords || [],
     timestamp: new Date(),

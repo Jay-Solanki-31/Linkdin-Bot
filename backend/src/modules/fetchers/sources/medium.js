@@ -1,7 +1,7 @@
 import Parser from "rss-parser";
 const parser = new Parser();
 
-export default async function fetchMedium({ topic = "programming" } = {}) {
+export default async function fetchMedium({ topic = "javascript" } = {}) {
   try {
     const feedUrl = `https://medium.com/feed/topic/${encodeURIComponent(topic)}`;
     const feed = await parser.parseURL(feedUrl);

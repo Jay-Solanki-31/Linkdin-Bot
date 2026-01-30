@@ -27,13 +27,12 @@ export const startFetch = async (req, res) => {
     jobId: job.id,
   });
 };
-
 export const getFetchedData = async (req, res) => {
-  const data = await FetchedContent.find().sort({ createdAt: -1 });
+  const limit = Number(req.query.limit || 50);
 
-  res.json({
-    success: true,
-    count: data.length,
-    data,
-  });
+  const data = await FetchedContent.find()
+    .sort({ createdAt: -1 })
+    .limit(limit);
+
+  res.json({ success: true, count: data.length, data });
 };

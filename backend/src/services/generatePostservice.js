@@ -10,7 +10,14 @@ class GeneratedPostService {
       source: payload.source || "",
       status: "draft",
     };
-    return await GeneratedPost.create(doc);
+    try {
+      return await GeneratedPost.create(doc);
+    } catch (err) {
+      if (err?.code === 11000) {
+        return await GeneratedPost.findOne({ articleId });
+      }
+      throw err;
+    }
   }
 }
 

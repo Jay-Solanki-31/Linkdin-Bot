@@ -3,8 +3,8 @@ dotenv.config();
 
 import { Worker } from "bullmq";
 import { redisConnection } from "../connection.js";
-import connectDB from "../../config/db.js";
-import fetcherService from "../../modules/fetchers/fetcher.service.js";
+import { connectDB } from "../../config/db.js";
+import FetcherService from "../../modules/fetchers/fetcher.service.js";
 import FetchedContent from "../../models/fetchedContent.model.js";
 import { normalizeArticle } from "../../modules/fetchers/normalizer.js";
 import logger from "../../utils/logger.js";
@@ -19,7 +19,7 @@ const worker = new Worker(
     const { source, keyword } = job.data;
     if (!source) throw new Error("Missing 'source' in job data");
 
-    const rawItems = await fetcherService.fetchFromSource(source, keyword);
+    const rawItems = await FetcherService.fetchFromSource(source, keyword);
     logger.info(
       `Fetched ${Array.isArray(rawItems) ? rawItems.length : 0} items from ${source}`,
     );
@@ -30,7 +30,7 @@ const worker = new Worker(
       .map((item) => ({
         ...item,
         description: item.description
-          ? item.description.split(" ").slice(0, 120).join(" ")
+          ? item.description.split(" ").slice(0, 60).join(" ")
           : null,
       }));
 
@@ -86,8 +86,23 @@ const worker = new Worker(
 worker.on("completed", (job) => {
   logger.info(`Job completed: ${job.id}`);
 });
+
 worker.on("failed", (job, err) => {
   logger.error(`Job failed: ${job.id} | ${err.message}`);
 });
+
+process.on("unhandledRejection", (err) => {
+  logger.error("[UNHANDLED REJECTION]", err);
+});
+
+process.on("uncaughtException", (err) => {
+  logger.error("[UNCAUGHT EXCEPTION]", err);
+  worker.close().then(() => {
+    process.exit(1);
+  }).catch(() => {
+    process.exit(1);
+  });
+});
+
 
 export default worker;

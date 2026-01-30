@@ -24,7 +24,7 @@ const handleFetch = async (source) => {
   setLoadingSource(source);
 
   try {
-    const res = await axios.post(`/api/${source}`);
+    const res = await axios.post(`/api/start/${source}`);
 
     await wait(350); 
 

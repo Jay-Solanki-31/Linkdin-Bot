@@ -1,4 +1,4 @@
-export function trimWords(text, maxWords = 120) {
+export function trimWords(text, maxWords = 60) {
   if (!text || typeof text !== "string") return "";
 
   return text

@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const schema = new mongoose.Schema({
   title: { type: String, required: true },
-  url: { type: String, unique: true, required: true, index: true },
+  url: { type: String, unique: true, required: true },
   description: { type: String, default: "" },
   language: { type: String, default: null },
   source: { type: String, default: null },
@@ -14,9 +14,9 @@ const schema = new mongoose.Schema({
     default: "fetched",
   },
 
-  slot: { type: String, default: null },
+  slot: { type: String },
 
-  expiresAt: { type: Date, index: true },
+  expiresAt: { type: Date},
 
   aiGenerated: { type: Boolean, default: false },
   isQueued: { type: Boolean, default: false },
@@ -26,5 +26,16 @@ const schema = new mongoose.Schema({
 
   aiError: { type: String, default: null }
 }, { timestamps: true });
+schema.index(
+  { slot: 1 },
+  {
+    unique: true,
+    sparse: true
+  }
+);
+schema.index(
+  { expiresAt: 1 },
+  { expireAfterSeconds: 0 }
+);
 
 export default mongoose.model("FetchedContent", schema);

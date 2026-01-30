@@ -1,6 +1,9 @@
 import dayjs from "dayjs";
+import weekOfYear from "dayjs/plugin/weekOfYear.js";
 import FetchedContent from "../../models/fetchedContent.model.js";
 import logger from "../../utils/logger.js";
+
+dayjs.extend(weekOfYear);
 
 const WEEKLY_SLOTS = [
   "TUE-1", "TUE-2",
@@ -9,34 +12,60 @@ const WEEKLY_SLOTS = [
 ];
 
 export async function allocateWeeklySlots() {
-  const weekKey = dayjs().format("YYYY-[W]WW");
+  const year = dayjs().year();
+  const week = String(dayjs().week()).padStart(2, "0");
+  const weekKey = `${year}-W${week}`;
 
   logger.info(`[SlotAllocator] Allocating slots for ${weekKey}`);
 
+  const usedSlots = await FetchedContent.find({
+    slot: { $regex: `^${weekKey}-` },
+  }).select("slot");
+
+  const usedSet = new Set(usedSlots.map(s => s.slot));
+
+  const availableSlots = WEEKLY_SLOTS
+    .map(s => `${weekKey}-${s}`)
+    .filter(s => !usedSet.has(s));
+
+  if (!availableSlots.length) {
+    logger.info("[SlotAllocator] No available slots");
+    return { allocated: 0 };
+  }
+
   const candidates = await FetchedContent.find({
     status: "fetched",
-    expiresAt: { $gt: new Date() },
+    slot: null,
+    $or: [
+      { expiresAt: { $exists: false } },
+      { expiresAt: { $gt: new Date() } }
+    ]
   })
-    .sort({ createdAt: -1 })
-    .limit(12);
-    
+    .sort({ createdAt: 1 })
+    .limit(availableSlots.length);
+
   if (!candidates.length) {
     logger.info("[SlotAllocator] No candidates found");
     return { allocated: 0 };
   }
 
-  const selected = candidates.slice(0, WEEKLY_SLOTS.length);
+  let allocated = 0;
 
-  for (let i = 0; i < selected.length; i++) {
-    selected[i].status = "selected";
-    selected[i].slot = `${weekKey}-${WEEKLY_SLOTS[i]}`;
-    await selected[i].save();
+  for (let i = 0; i < candidates.length; i++) {
+    const updated = await FetchedContent.findOneAndUpdate(
+      { _id: candidates[i]._id, slot: null },
+      {
+        $set: {
+          status: "selected",
+          slot: availableSlots[i],
+        },
+      },
+      { new: true }
+    );
+
+    if (updated) allocated++;
   }
 
-  logger.info(`[SlotAllocator] Allocated ${selected.length} slots`);
-
-  return {
-    week: weekKey,
-    allocated: selected.length,
-  };
+  logger.info(`[SlotAllocator] Allocated ${allocated} slots`);
+  return { week: weekKey, allocated };
 }

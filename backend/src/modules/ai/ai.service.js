@@ -4,7 +4,6 @@ import FetchedContent from "../../models/fetchedContent.model.js";
 import logger from "../../utils/logger.js";
 
 class AIService {
-  // Generate AI post for a specific content item
   async generateForContent(contentId) {
     const item = await FetchedContent.findById(contentId);
 
@@ -12,6 +11,18 @@ class AIService {
       logger.warn("AIService: content not found:", contentId);
       return null;
     }
+
+      if (!item.slot || item.status !== "selected") {
+    logger.warn("AIService: content not slot-assigned:", contentId);
+    await FetchedContent.findByIdAndUpdate(contentId, {
+      $set: {
+        processing: false,
+        isQueued: false,
+      }
+    });
+    return null;
+  }
+
 
     // Safety check: already generated
     if (item.aiGenerated) {
@@ -122,28 +133,6 @@ Output only the post text. Do not add explanations.
     }
   }
 
-  // Pick next available content safely used by scheduler / worker
-  async generateForNext() {
-    const item = await FetchedContent.findOne({
-      aiGenerated: false,
-      processing: { $ne: true },
-      $or: [{ isQueued: false }, { isQueued: { $exists: false } }]
-    });
-
-    if (!item) return { status: "empty" };
-
-    // Lock immediately to avoid race conditions
-    await FetchedContent.findByIdAndUpdate(item._id, {
-      $set: {
-        isQueued: true,
-        processing: true,
-        processingAt: new Date()
-      }
-    });
-
-    const text = await this.generateForContent(item._id.toString());
-    return { id: item._id, text };
-  }
 }
 
 export default new AIService();
