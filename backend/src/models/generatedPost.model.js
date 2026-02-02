@@ -17,7 +17,7 @@ const GeneratedPostSchema = new mongoose.Schema({
     default: "draft",
     index: true
   },
-
+  slot: String,
   linkedinPostUrn: String,
   postedAt: Date,
   error: String,

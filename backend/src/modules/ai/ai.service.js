@@ -104,7 +104,8 @@ Output only the post text. Do not add explanations.
         title: item.title,
         text,
         url: item.url,
-        source: item.source
+        source: item.source,
+        slot: item.slot
       });
 
       await FetchedContent.findByIdAndUpdate(contentId, {
@@ -116,7 +117,6 @@ Output only the post text. Do not add explanations.
           aiError: null
         }
       });
-
       logger.info("AIService: successfully generated for", contentId);
       return text;
     } catch (err) {

@@ -13,7 +13,16 @@ new Worker(
     if (job.name !== JOB_TYPES.POST_TO_LINKEDIN) return;
 
     const { postId } = job.data;
-    const post = await GeneratedPost.findById(postId);
+    const post = await GeneratedPost.findOneAndUpdate(
+      {
+        _id: postId,
+        status: "queued",
+        processing: true,
+      },
+      { $set: { processingAt: new Date() } },
+      { new: true }
+    );
+
 
     if (!post) throw new Error("Post not found");
 

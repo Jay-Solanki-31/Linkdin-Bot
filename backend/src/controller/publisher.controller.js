@@ -1,4 +1,5 @@
 import GeneratedPost from "../models/generatedPost.model.js";
+import { enqueueLinkedInPost } from "../queue/linkedin.queue.js";
 
 export async function publishGeneratedPost(req, res) {
   try {
@@ -8,9 +9,14 @@ export async function publishGeneratedPost(req, res) {
       {
         _id: id,
         status: "draft",
+        processing: { $ne: true },
       },
       {
-        $set: { status: "queued" },
+        $set: {
+          status: "queued",
+          processing: true,
+          processingAt: new Date(),
+        },
       },
       { new: true }
     );
@@ -22,9 +28,11 @@ export async function publishGeneratedPost(req, res) {
       });
     }
 
+    await enqueueLinkedInPost(post._id.toString());
+
     return res.status(202).json({
       success: true,
-      message: "Post queued for scheduled publishing",
+      message: "Post queued and publishing started",
       data: post,
     });
   } catch (err) {

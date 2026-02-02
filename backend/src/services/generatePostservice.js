@@ -8,6 +8,7 @@ class GeneratedPostService {
       text: typeof payload === "string" ? payload : payload.text,
       url: payload.url || "",
       source: payload.source || "",
+      slot: payload.slot || "",
       status: "draft",
     };
     try {
