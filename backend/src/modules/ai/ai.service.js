@@ -55,7 +55,6 @@ Strict guidelines:
 - Mention ${item.source} naturally as part of the narrative (not as credit text).
 - Avoid marketing language, buzzwords, and hashtags.
 - The final line should gently invite conversation (not a pushy CTA).
-- Place the URL on a separate final line, exactly as provided.
 
 Content to base the post on:
 Title: ${item.title}

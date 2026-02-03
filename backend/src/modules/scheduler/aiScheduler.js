@@ -18,14 +18,9 @@ export const startAIScheduler = () => {
           slot: { $ne: null },
           aiGenerated: false,
           isQueued: { $ne: true },
-          processing: { $ne: true },
         },
         {
-          $set: {
-            isQueued: true,
-            processing: true,
-            processingAt: new Date(),
-          },
+          $set: { isQueued: true},
         },
         {
           sort: { slot: 1 }, 
