@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from "@/components/ui/card";
+
 import {
   Table,
   TableBody,
@@ -9,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,46 +31,60 @@ export default function FetcherList() {
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
+ 
+  const [selected, setSelected] = useState(null);
+
   const loadData = async () => {
     try {
       const res = await axios.get("http://localhost:5000/api/fetch");
-      setRecords(res.data.data);
+      setRecords(res.data.data || []);
     } catch (err) {
-      console.log("Error loading records:", err);
       toast.error("Failed to load fetched records");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 10000);
+
+    // refresh every 15s (reasonable for admin)
+    const interval = setInterval(loadData, 15000);
     return () => clearInterval(interval);
   }, []);
 
-  const filtered = records.filter(
-    (r) =>
-      r.title.toLowerCase().includes(search.toLowerCase()) ||
-      r.source.toLowerCase().includes(search.toLowerCase())
-  );
 
-  
+  const filtered = records.filter((r) => {
+    const title = r.title?.toLowerCase() || "";
+    const source = r.source?.toLowerCase() || "";
+    return (
+      title.includes(search.toLowerCase()) ||
+      source.includes(search.toLowerCase())
+    );
+  });
+
+
   const totalPages = Math.ceil(filtered.length / pageSize);
   const startIndex = (page - 1) * pageSize;
   const currentPageData = filtered.slice(startIndex, startIndex + pageSize);
 
-  const nextPage = () => page < totalPages && setPage(page + 1);
-  const prevPage = () => page > 1 && setPage(page - 1);
+  const nextPage = () => page < totalPages && setPage((p) => p + 1);
+  const prevPage = () => page > 1 && setPage((p) => p - 1);
+
 
   return (
     <div className="space-y-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground">Fetched Records</h1>
-        <p className="text-sm text-muted-foreground mt-1">View and manage all collected articles</p>
+      <div>
+        <h1 className="text-3xl font-bold">Fetched Records</h1>
+        <p className="text-sm text-muted-foreground">
+          View and manage all collected articles
+        </p>
       </div>
+
       <Card>
-        <CardHeader className="border-b border-border/40">
-          <CardTitle className="text-base mb-4">All Records</CardTitle>
+        <CardHeader className="space-y-4 border-b">
+          <CardTitle className="text-base">All Records</CardTitle>
+
           <Input
             placeholder="Search by title or source..."
             value={search}
@@ -85,54 +107,65 @@ export default function FetcherList() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-b border-border/40 hover:bg-transparent">
-                      <TableHead className="font-semibold text-foreground">Title</TableHead>
-                      <TableHead className="font-semibold text-foreground">Source</TableHead>
-                      <TableHead className="font-semibold text-foreground">AI Generated</TableHead>
-                      <TableHead className="font-semibold text-foreground">Queued</TableHead>
-                      <TableHead className="font-semibold text-foreground">Date</TableHead>
+                    <TableRow>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Source</TableHead>
+                      <TableHead>AI</TableHead>
+                      <TableHead>Queued</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">
+                        Action
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
 
                   <TableBody>
                     {currentPageData.map((item) => (
-                      <TableRow key={item._id} className="border-b border-border/40 hover:bg-muted/40 transition-colors">
-                        <TableCell className="font-medium text-foreground max-w-sm truncate text-sm">
+                      <TableRow key={item._id} className="hover:bg-muted/40">
+                        <TableCell className="max-w-xs truncate text-sm font-medium">
                           {item.title}
                         </TableCell>
 
                         <TableCell>
-                          <Badge variant="default" className="text-xs">
+                          <Badge variant="secondary" className="text-xs">
                             {item.source}
                           </Badge>
                         </TableCell>
 
                         <TableCell>
                           {item.aiGenerated ? (
-                            <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs">
-                              ✓ Yes
+                            <Badge className="bg-green-100 text-green-700 text-xs">
+                              Yes
                             </Badge>
                           ) : (
-                            <Badge variant="secondary" className="text-xs">
-                              ○ No
+                            <Badge variant="outline" className="text-xs">
+                              No
                             </Badge>
                           )}
                         </TableCell>
 
                         <TableCell>
                           {item.isQueued ? (
-                            <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 text-xs">
-                              ⏳ Queued
+                            <Badge className="bg-yellow-100 text-yellow-700 text-xs">
+                              Queued
                             </Badge>
                           ) : (
-                            <Badge variant="secondary" className="text-xs">
-                              -
-                            </Badge>
+                            "-"
                           )}
                         </TableCell>
 
-                        <TableCell className="text-muted-foreground text-xs">
+                        <TableCell className="text-xs text-muted-foreground">
                           {new Date(item.createdAt).toLocaleDateString()}
+                        </TableCell>
+
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setSelected(item)}
+                          >
+                            View
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -140,34 +173,19 @@ export default function FetcherList() {
                 </Table>
               </div>
 
-              {/* Pagination Controls */}
-              <div className="flex items-center justify-between mt-8 pt-6 border-t border-border/40">
+              <div className="flex items-center justify-between mt-6">
                 <Button
                   onClick={prevPage}
                   disabled={page === 1}
                   variant="outline"
                   size="sm"
                 >
-                  ← Previous
+                  Prev
                 </Button>
 
-                <div className="flex items-center gap-1">
-                  {[...Array(Math.min(totalPages, 5))].map((_, i) => {
-                    const pageNum = page > 3 ? page - 2 + i : i + 1;
-                    if (pageNum > totalPages) return null;
-                    return (
-                      <Button
-                        key={pageNum}
-                        variant={page === pageNum ? "default" : "outline"}
-                        size="sm"
-                        className="px-3"
-                        onClick={() => setPage(pageNum)}
-                      >
-                        {pageNum}
-                      </Button>
-                    );
-                  })}
-                </div>
+                <span className="text-xs text-muted-foreground">
+                  Page {page} of {totalPages}
+                </span>
 
                 <Button
                   onClick={nextPage}
@@ -175,22 +193,71 @@ export default function FetcherList() {
                   variant="outline"
                   size="sm"
                 >
-                  Next →
+                  Next
                 </Button>
-              </div>
-
-              <div className="mt-6 p-3 bg-muted/50 rounded-lg border border-border/40 text-xs text-muted-foreground">
-                Showing {currentPageData.length} of {filtered.length} records (Page {page} of {totalPages})
               </div>
             </>
           ) : (
-            <div className="text-center py-12">
-              <p className="text-sm font-medium text-muted-foreground">No records found</p>
-              <p className="text-xs text-muted-foreground mt-1">Try adjusting your search filters</p>
+            <div className="text-center py-10 text-sm text-muted-foreground">
+              No records found
             </div>
           )}
         </CardContent>
       </Card>
+
+      {selected && (
+        <RecordViewer
+          record={selected}
+          onClose={() => setSelected(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+
+function RecordViewer({ record, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex justify-end">
+      <div className="w-full max-w-2xl bg-background h-full flex flex-col shadow-xl">
+
+        {/* header */}
+        <div className="p-4 border-b flex justify-between items-center">
+          <h2 className="font-semibold">Article Preview</h2>
+          <Button size="sm" variant="outline" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+
+        {/* body */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+
+          <h3 className="text-lg font-semibold">
+            {record.title}
+          </h3>
+
+          <div className="flex gap-2">
+            <Badge>{record.source}</Badge>
+            {record.aiGenerated && <Badge>AI</Badge>}
+            {record.isQueued && <Badge>Queued</Badge>}
+          </div>
+
+          {record.url && (
+            <a
+              href={record.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm underline"
+            >
+              Open source →
+            </a>
+          )}
+
+          <p className="whitespace-pre-line text-sm leading-relaxed">
+            {record.description || record.text || "No content available"}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

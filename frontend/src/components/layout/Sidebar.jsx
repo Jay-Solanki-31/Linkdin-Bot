@@ -7,9 +7,9 @@ export default function Sidebar() {
     { label: "Fetcher", path: "/fetcher", icon: Download },
     { label: "Records", path: "/records", icon: FileText },
     { label: "AI Posts", path: "/posts", icon: Zap },
-    { label: "LinkedIn", path: "/linkedin", icon: Linkedin },
+    // { label: "LinkedIn", path: "/linkedin", icon: Linkedin },
     { label: "Queue", path: "/queue", icon: PackageOpen },
-    { label: "Settings", path: "/settings", icon: Settings },
+    // { label: "Settings", path: "/settings", icon: Settings },
   ];
 
   return (
