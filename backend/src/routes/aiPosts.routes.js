@@ -1,12 +1,8 @@
 import express from "express";
 import GeneratedPost from "../models/generatedPost.model.js";
-import { queueGeneratedPost } from "../controller/queue.controller.js";
 
 
 const router = express.Router();
-
-router.post("/:id/queue", queueGeneratedPost);
-
 
 router.get("/", async (req, res) => {
   try {

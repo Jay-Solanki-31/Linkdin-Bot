@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import { getFetchedContent } from "@/api/fetcher.api";
 
 import {
   Card,
@@ -36,8 +36,8 @@ export default function FetcherList() {
 
   const loadData = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/fetch");
-      setRecords(res.data.data || []);
+      const res = await getFetchedContent();
+      setRecords(res.data?.data || res.data || []);
     } catch (err) {
       toast.error("Failed to load fetched records");
     } finally {

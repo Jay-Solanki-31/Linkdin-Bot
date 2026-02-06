@@ -1,18 +1,11 @@
-export async function fetchAIPosts(page = 1, limit = 5) {
-  const res = await fetch(`/api/ai-posts?page=${page}&limit=${limit}`);
-  if (!res.ok) throw new Error("Failed to fetch AI posts");
-  return res.json();
-}
+// src/api/aiPosts.api.js
+import api from "./index";
 
-export async function updateAIPost(postId, payload) {
-  const res = await fetch(`/api/ai-posts/${postId}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+export const fetchAIPosts = (params = {}) =>
+  api.get("/api/ai-posts", { params });
 
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Update failed");
+export const queueAIPost = (postId) =>
+  api.post(`/api/ai-posts/${postId}/queue`);
 
-  return data.data;
-}
+export const updateAIPost = (postId, payload) =>
+  api.put(`/api/ai-posts/${postId}`, payload);

@@ -1,3 +1,4 @@
+// src/api/publisher.api.js
 export async function postToLinkedIn(postId) {
   const res = await fetch("/api/publisher/generated/post", {
     method: "POST",

@@ -1,11 +1,11 @@
 import { useState } from "react";
-import axios from "axios";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Github, BookOpen, Newspaper, Package, Hash, Mail, Zap } from "lucide-react";
 import { SiReddit } from "react-icons/si";
+import { startFetch } from "@/api/fetcher.api";
 const sources = [
   { id: "github", label: "GitHub", icon: <Github className="w-6 h-6" />, color: "from-slate-900 to-slate-700 dark:from-zinc-400 dark:to-zinc-600", lightBg: "from-slate-50 to-slate-100 dark:from-zinc-900 dark:to-black" },
   { id: "devto", label: "Dev.to", icon: <BookOpen className="w-6 h-6" />,color: "from-zinc-900 to-black dark:from-neutral-400 dark:to-neutral-600", lightBg: "from-zinc-100 to-zinc-200 dark:from-neutral-900 dark:to-black" },
@@ -24,8 +24,7 @@ const handleFetch = async (source) => {
   setLoadingSource(source);
 
   try {
-    const res = await axios.post(`/api/start/${source}`);
-
+    const res = await startFetch(source);
     await wait(350); 
 
     setLoadingSource(null);

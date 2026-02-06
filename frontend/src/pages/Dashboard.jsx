@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, Zap, Activity } from "lucide-react";
 import {DashboardSkeleton} from "@/components/ui/PostSkeleton";
 import { toast } from "sonner";
+import { fetchDashboard } from "@/api/dashboard.api";
 
 export default function Dashboard() {
   const [data, setData] = useState(null);
@@ -11,7 +11,7 @@ export default function Dashboard() {
 
   const loadDashboard = async () => {
     try {
-      const res = await axios.get("/api/dashboard");
+      const res = await fetchDashboard();
       setData(res.data);
       setLoading(false);
     } catch (err) {
