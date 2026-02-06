@@ -96,6 +96,12 @@ The system operates on a scheduler-driven architecture with Redis-backed job que
                │
                ▼
     ┌──────────────────────────────────────────┐
+    │   Slot Scheduler ( Corn Job)     │
+    │  (Assign Week Sloat For Post )         │
+    └──────────┬─────────────────────────────────┘
+               │
+               ▼
+    ┌──────────────────────────────────────────┐
     │    AI Scheduler (Cron Job)               │
     │   (Monitors & triggers AI generation)    │
     └──────────┬─────────────────────────────────┘
