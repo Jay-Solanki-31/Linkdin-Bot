@@ -199,7 +199,10 @@ backend/
 │   │   └── scheduler/
 │   │       ├── fetchScheduler.js        # Cron: trigger fetching
 │   │       ├── aiScheduler.js           # Cron: trigger AI generation
-│   │       └── linkedinScheduler.js     # Cron: trigger publishing
+│   │       ├── linkedinScheduler.js     # Cron: trigger publishing
+│   │       └── slotAllocator.scheduler.js # Cron: allocate weekly publishing slots
+│   │   ├── slotAllocator/               # Slot allocation for scheduled publishing
+│   │   │   └── slotAllocator.service.js # Weekly slot allocation logic
 │   ├── queue/
 │   │   ├── connection.js                # Redis connection setup
 │   │   ├── fetcher.queue.js             # BullMQ: Fetcher queue
@@ -368,6 +371,31 @@ frontend/
   lifecycleState: "PUBLISHED"
 }
 ```
+
+---
+
+### 3.5 Slot-Based Scheduling & Publishing
+
+**Purpose**: Ensure consistent, conflict-free publishing by allocating a fixed set of weekly "slots" to promising articles, driving a predictable AI-generation → publish pipeline.
+
+Flow:
+- `slotAllocator.scheduler.js` runs every Monday at 10:00 (server timezone) and calls `allocateWeeklySlots()`.
+- `allocateWeeklySlots()` builds a `weekKey` (e.g. `2026-W06`) and composes slot IDs like `2026-W06-TUE-1`, `2026-W06-TUE-2`, etc.
+- It finds `FetchedContent` items with `status: "fetched"` and `slot: null`, and assigns available slots in FIFO order, setting `status: "selected"` and `slot: <weekKey>-<slot>` on the record.
+- A manual trigger is available: `POST /api/slot-allocator/run` (calls the controller `runSlotAllocator`).
+
+How it integrates with the pipeline:
+- The **AI Scheduler** only queues content where `status: "selected"` and `slot` is set — ensuring AI generation targets pre-selected slot assignments.
+- Generated posts (`GeneratedPost`) inherit the `slot` value so the **LinkedIn Scheduler** can match posts to time slots.
+- The **LinkedIn Scheduler** maps slot suffixes to publish times (TUE/WED/THU → 10:00 & 17:00) and enqueues `GeneratedPost` records whose `slot` matches the current weekday/slot number.
+
+Slot definitions (backend):
+- Weekly slot set: `TUE-1`, `TUE-2`, `WED-1`, `WED-2`, `THU-1`, `THU-2`.
+- Example slot key: `2026-W06-TUE-1`.
+
+Notes:
+- This design prevents over-posting and allows predictable weekly cadence.
+- `FetchedContent.status` includes `fetched | selected | generated | posted | expired` and the `slot` field is indexed for efficient lookups.
 
 ---
 
