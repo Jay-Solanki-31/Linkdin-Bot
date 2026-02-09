@@ -1,6 +1,8 @@
 import express from "express";
 import dotenv from "dotenv";
 import session from "express-session";
+import swaggerUi from "swagger-ui-express";
+import { swaggerSpec } from "./config/swagger.js";
 dotenv.config();
 
 import cors from "cors";
@@ -48,6 +50,9 @@ app.use(
 app.get("/", (req, res) => {
   res.json({ message: "LinkedIn Bot Server Running" });
 });
+
+// Swagger UI
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use("/ai", aiRoute);
 app.use("/api", fetcherRoute);
