@@ -1,10 +1,14 @@
-import { allocateWeeklySlots } from "../modules/slotAllocator/slotAllocator.service.js";
+import { enqueueSlotAllocation } from "../queue/slotAllocator.queue.js";
 
 export async function runSlotAllocator(req, res) {
   try {
-    const result = await allocateWeeklySlots();
-    // console.log('controller is called and runned',result);
-    res.json({ success: true, result });
+    const job = await enqueueSlotAllocation();
+
+    res.json({
+      success: true,
+      message: "Slot allocation job queued",
+      jobId: job.id,
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

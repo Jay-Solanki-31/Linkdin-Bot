@@ -1,134 +1,65 @@
+// ai.service.js
 import generateAIResponse from "../../services/gemini.js";
-import generatedPostService from "../../services/generatePostservice.js";
-import FetchedContent from "../../models/fetchedContent.model.js";
 import logger from "../../utils/logger.js";
 
+const clamp = (str = "", max = 700) =>
+  String(str).replace(/\s+/g, " ").trim().slice(0, max);
+
 class AIService {
-  async generateForContent(contentId) {
-    const item = await FetchedContent.findById(contentId);
-
-    if (!item) {
-      logger.warn("AIService: content not found:", contentId);
-      return null;
+  async generateForContent({ title, description, source, url }) {
+    if (!title && !description) {
+      throw new Error("AIService: empty content");
     }
 
-      if (!item.slot || item.status !== "selected") {
-    logger.warn("AIService: content not slot-assigned:", contentId);
-    await FetchedContent.findByIdAndUpdate(contentId, {
-      $set: {
-        processing: false,
-        isQueued: false,
-      }
-    });
-    return null;
-  }
+    const safeTitle = clamp(title, 200);
+    const safeDesc = clamp(description, 700);
+    const safeSource = clamp(source, 50);
+    const safeUrl = clamp(url, 300);
 
-
-    // Safety check: already generated
-    if (item.aiGenerated) {
-      logger.info("AIService: already generated for", contentId);
-      await FetchedContent.findByIdAndUpdate(contentId, {
-        $set: { processing: false, processingAt: null, isQueued: false }
-      });
-      return null;
-    }
-
-    const description =
-      item.description && item.description.length > 700
-        ? item.description.slice(0, 700)
-        : item.description;
-
-    const hasUsefulContext = description && description.length > 80;
+    const hasUsefulContext = safeDesc.length > 80;
 
     const prompt = `
 You are a LinkedIn creator sharing a thoughtful discovery with your professional network.
 
-Write ONE natural LinkedIn post using the information below.
+Write ONE natural LinkedIn post.
 
-Strict guidelines:
-- Write like a real person reflecting on something valuable they just learned.
-- Do NOT summarize the content. React to one meaningful idea.
-- Focus on ONE clear insight or takeaway.
-- Use a professional but conversational tone.
-- Aim for 3–5 sentences. Each sentence should add a new thought.
-- Include exactly ONE relevant emoji, placed mid-sentence for emphasis.
-- Mention ${item.source} naturally as part of the narrative (not as credit text).
-- Avoid marketing language, buzzwords, and hashtags.
-- The final line should gently invite conversation (not a pushy CTA).
+Rules:
+- 3–5 sentences
+- exactly ONE emoji mid sentence
+- conversational tone
+- no hashtags
+- no marketing language
+- end with soft discussion invite
 
-Content to base the post on:
-Title: ${item.title}
+Title: ${safeTitle}
 Description: ${
       hasUsefulContext
-        ? description
+        ? safeDesc
         : "Use the title to infer a single thoughtful takeaway."
     }
-Source: ${item.source || "the original author"}
-URL: ${item.url}
+Source: ${safeSource || "the original author"}
+URL: ${safeUrl}
 
-Output only the post text. Do not add explanations.
+Output only the post text.
 `;
 
-    let text;
     try {
-      text = await generateAIResponse(prompt);
-    } catch (err) {
-      logger.error("Gemini API Error:", err?.message || err);
-      await FetchedContent.findByIdAndUpdate(contentId, {
-        $set: {
-          processing: false,
-          processingAt: null,
-          isQueued: false,
-          aiError: "gemini_error"
-        }
-      });
-      throw err;
-    }
+      let text = await generateAIResponse(prompt);
 
-    if (!text) {
-      logger.warn("AIService: empty response for", contentId);
-      await FetchedContent.findByIdAndUpdate(contentId, {
-        $set: {
-          processing: false,
-          processingAt: null,
-          isQueued: false,
-          aiError: "no_response"
-        }
-      });
-      return null;
-    }
+      if (!text) throw new Error("Empty AI response");
 
-    try {
-      await generatedPostService.save(item._id, {
-        title: item.title,
-        text,
-        url: item.url,
-        source: item.source,
-        slot: item.slot
-      });
+      // cleanup
+      text = text
+        .replace(/```[\s\S]*?```/g, "")
+        .replace(/^["'\s]+|["'\s]+$/g, "")
+        .trim();
 
-      await FetchedContent.findByIdAndUpdate(contentId, {
-        $set: {
-          aiGenerated: true,
-          processing: false,
-          processingAt: null,
-          isQueued: false,
-          aiError: null
-        }
-      });
-      logger.info("AIService: successfully generated for", contentId);
+      if (text.length < 30) throw new Error("AI output too short");
+
       return text;
     } catch (err) {
-      logger.error("AIService: save error:", err?.message || err);
-      await FetchedContent.findByIdAndUpdate(contentId, {
-        $set: {
-          processing: false,
-          processingAt: null,
-          isQueued: false,
-          aiError: err.message?.slice(0, 512) || "save_error"
-        }
-      });
-      throw err;
+      logger.error("Gemini API Error:", err?.message || err);
+      throw err; // important → let queue retry
     }
   }
 

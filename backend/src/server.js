@@ -13,8 +13,6 @@ import fetcherRoute from "./routes/fetcher.route.js";
 import aiRoute from "./routes/ai.routes.js";
 
 import { startFetchScheduler } from "./modules/scheduler/fetchScheduler.js";
-import { startAIScheduler } from "./modules/scheduler/aiScheduler.js";
-import { startLinkedInPostScheduler } from "./modules/scheduler/linkedinPostScheduler.js";
 import { startSlotAllocatorScheduler } from "./modules/scheduler/slotAllocator.scheduler.js";
 
 import linkedinAuthRoutes from "./routes/linkedinAuth.routes.js";
@@ -25,6 +23,7 @@ import dashboardRoutes from "./routes/dashboard.routes.js";
 import aiPostsRoutes from "./routes/aiPosts.routes.js";
 import publisherRoutes from "./routes/publisher.routes.js";
 import slotAllocatorRoutes from "./routes/slotAllocator.routes.js";
+import testRoutes from "./routes/test.routes.js"
 
 
 const app = express();
@@ -62,6 +61,7 @@ app.use("/api/ai-posts", aiPostsRoutes);
 app.use("/api/publisher", publisherRoutes);
 app.use("/admin/queues", dashboardAuth, bullBoard.getRouter());
 app.use("/api/slot-allocator", slotAllocatorRoutes);
+app.use("/test",testRoutes)
 
 
 const PORT = process.env.PORT || 5000;
@@ -74,11 +74,10 @@ async function start() {
     await import("./queue/workers/fetcher.worker.js");
     await import("./queue/workers/ai.worker.js");
     await import("./queue/workers/linkedin.worker.js");
+    await import("./queue/workers/slotAllocator.worker.js")
 
     startFetchScheduler();
     startSlotAllocatorScheduler();
-    startAIScheduler();
-    startLinkedInPostScheduler();
 
     app.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);

@@ -13,7 +13,7 @@ const GeneratedPostSchema = new mongoose.Schema({
   source: { type: String },
   status: {
     type: String,
-    enum: ["draft", "queued", "posted", "failed"],
+    enum: ["draft", "queued", "posted", "failed", "publishing"],
     default: "draft",
     index: true
   },
@@ -21,6 +21,9 @@ const GeneratedPostSchema = new mongoose.Schema({
   linkedinPostUrn: String,
   postedAt: Date,
   error: String,
+  attempts: { type: Number, default: 0 },
+  lastAttemptAt: Date,
+  publishAt: Date
 
 }, { timestamps: true });
 
@@ -30,6 +33,9 @@ GeneratedPostSchema.index(
   { linkedinPostUrn: 1 },
   { unique: true, sparse: true }
 );
+
+GeneratedPostSchema.index({ slot: 1, status: 1 });
+GeneratedPostSchema.index({ publishAt: 1 });
 
 
 export default mongoose.model("GeneratedPost", GeneratedPostSchema);

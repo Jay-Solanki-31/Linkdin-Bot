@@ -1,37 +1,30 @@
-import FetchedContent from "../models/fetchedContent.model.js";
+import GeneratedPost from "../models/generatedPost.model.js";
 import { addAIJob } from "../queue/ai.queue.js";
 
 export const generateAIManually = async (req, res) => {
-  const { contentId } = req.params;
+  const { postId } = req.params;
 
-  const doc = await FetchedContent.findOneAndUpdate(
-    {
-      _id: contentId,
-      status: "selected",
-      aiGenerated: false,
-      isQueued: { $ne: true },
-      processing: { $ne: true },
-    },
-    {
-      $set: {
-        isQueued: true, // enqueue marker ONLY
-      },
-    },
-    { new: true }
-  );
-
-  if (!doc) {
-    return res.status(409).json({
+  if (!postId) {
+    return res.status(400).json({
       success: false,
-      error: "Content already queued or processing",
+      error: "postId is required",
     });
   }
 
-  await addAIJob(contentId);
+  const post = await GeneratedPost.findById(postId);
+  if (!post) {
+    return res.status(404).json({
+      success: false,
+      error: "Post not found",
+    });
+  }
+
+  const job = await addAIJob(postId);
 
   return res.json({
     success: true,
-    queued: true,
-    contentId,
+    message: "AI generation job queued",
+    jobId: job.id,
+    postId,
   });
 };

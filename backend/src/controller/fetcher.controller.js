@@ -1,6 +1,5 @@
 
 import { fetcherQueue } from "../queue/fetcher.queue.js";
-import FetchedContent from "../models/fetchedContent.model.js";
 import FetcherService from "../modules/fetchers/fetcher.service.js";
 
 export const startFetch = async (req, res) => {
@@ -19,8 +18,12 @@ export const startFetch = async (req, res) => {
     });
   }
 
-  // Use standardized job type FETCH_CONTENT
-  const job = await fetcherQueue.add("FETCH_CONTENT", { source });
+  // Enqueue fetch job; worker will perform DB interactions.
+const job = await fetcherQueue.add(
+  "FETCH_CONTENT",
+  { source },
+  { jobId: `fetch-${source}-${Date.now()}` }
+);
 
   return res.json({
     message: `Fetch job added for ${source}`,
@@ -28,11 +31,14 @@ export const startFetch = async (req, res) => {
   });
 };
 export const getFetchedData = async (req, res) => {
-  const limit = Number(req.query.limit || 50);
+  const source = req.query.source;
 
-  const data = await FetchedContent.find()
-    .sort({ createdAt: -1 })
-    .limit(limit);
+  if (!source) {
+    return res.status(400).json({ success: false, message: "source query param is required to enqueue a fetch job" });
+  }
 
-  res.json({ success: true, count: data.length, data });
+  // Enqueue a fetch job for the requested source instead of polling DB here.
+  const job = await fetcherQueue.add("FETCH_CONTENT", { source });
+
+  res.json({ success: true, message: `Fetch job enqueued for ${source}`, jobId: job.id });
 };

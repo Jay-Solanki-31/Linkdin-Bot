@@ -1,85 +1,64 @@
 import { Worker } from "bullmq";
 import { redisConnection } from "../connection.js";
-import { JOB_TYPES } from "../jobTypes.js";
 import GeneratedPost from "../../models/generatedPost.model.js";
 import { publishToLinkedIn } from "../../modules/publisher/linkedin.publisher.js";
 import logger from "../../utils/logger.js";
 import { connectDB } from "../../config/db.js";
 
 await connectDB();
-new Worker(
+
+export default new Worker(
   "linkedin-queue",
   async (job) => {
-    if (job.name !== JOB_TYPES.POST_TO_LINKEDIN) return;
-
     const { postId } = job.data;
+    logger.info(`Processing LinkedIn job: ${postId}`);
+
     const post = await GeneratedPost.findOneAndUpdate(
       {
         _id: postId,
-        status: "queued",
-        processing: true,
+        status: { $nin: ["posted", "publishing"] },
+        publishAt: { $lte: new Date() },
       },
-      { $set: { processingAt: new Date() } },
+      { $set: { status: "publishing" } },
       { new: true }
     );
 
-
-    if (!post) throw new Error("Post not found");
-
-    if (post.status !== "queued") {
-      logger.warn("Invalid post state", post.status);
+    if (!post) {
+      logger.info(`Post ${postId} not eligible for publishing (either scheduled for future or already processed).`);
       return;
     }
 
     try {
+      logger.info(`Publishing post ${postId} to LinkedIn...`);
+
       const result = await publishToLinkedIn({ text: post.text });
 
-      const linkedinUrn =
-        result.data?.id ||
-        result.data?.value ||
-        result.data?.urn;
+      await GeneratedPost.findByIdAndUpdate(postId, {
+        $set: {
+          status: "posted",
+          linkedinPostUrn: result?.data?.id || null,
+          error: null,
+        },
+      });
 
-      if (!linkedinUrn) {
-        throw new Error("LinkedIn URN missing");
-      }
-
-      post.status = "posted";
-      post.postedAt = new Date();
-      post.linkedinPostUrn = linkedinUrn;
-      post.processing = false;
-      post.processingAt = null;
-      post.error = null;
-
-      await post.save();
-
-      logger.info("LinkedIn post published", postId);
+      logger.info(`Post successfully published: ${postId}`);
 
     } catch (err) {
-      post.status = "failed";
-      post.processing = false;
-      post.processingAt = null;
-      post.error = JSON.stringify(
-        err?.response?.data || { message: err.message }
-      );
+      logger.error(`Publishing failed for ${postId}: ${err.message}`);
 
-      await post.save();
-      logger.error("LinkedIn post failed", postId);
+      await GeneratedPost.findByIdAndUpdate(postId, {
+        $set: {
+          status: "failed",
+          error: err.message?.slice(0, 512),
+        },
+        $inc: { attempts: 1 },
+      });
+
       throw err;
     }
   },
   {
     connection: redisConnection.connection,
-    concurrency: 1,
+    concurrency: 1, 
   }
 );
-
-process.on("unhandledRejection", (err) => {
-  console.error("[UNHANDLED REJECTION]", err);
-  process.exit(1);
-});
-
-process.on("uncaughtException", (err) => {
-  console.error("[UNCAUGHT EXCEPTION]", err);
-  process.exit(1);
-});
-

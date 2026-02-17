@@ -1,75 +1,63 @@
 import { Worker } from "bullmq";
 import { redisConnection } from "../connection.js";
 import aiService from "../../modules/ai/ai.service.js";
+
+import GeneratedPost from "../../models/generatedPost.model.js";
 import FetchedContent from "../../models/fetchedContent.model.js";
+
+import { linkedinQueue } from "../linkedin.queue.js";
+import { JOB_TYPES } from "../jobTypes.js";
+
 import logger from "../../utils/logger.js";
 import { connectDB } from "../../config/db.js";
 
 await connectDB();
 
-const worker = new Worker(
+export default new Worker(
   "ai-processing-queue",
   async (job) => {
-    const { contentId } = job.data;
-    logger.info("AI Worker processing", contentId);
+    const { postId } = job.data;
+    logger.info(`Processing AI job for postId: ${postId}`);
 
-const doc = await FetchedContent.findOneAndUpdate(
-  {
-    _id: contentId,
-    processing: { $ne: true },
-  },
-  {
-    $set: {
-      processing: true,
-      processingAt: new Date(),
-      isQueued: true,
-      aiError: null,
-    },
-  },
-  { new: true }
-);
-
-if (!doc) {
-  logger.warn("AI Worker skipped (locked)", contentId);
-  return;
-}
-
-    try {
-      const text = await aiService.generateForContent(contentId);
-      if (!text) throw new Error("AI returned empty response");
-
-      await FetchedContent.findByIdAndUpdate(contentId, {
-        $set: {
-          processing: false,
-          processingAt: null,
-          isQueued: false,
-          aiGenerated: true,
-          status: "generated",
-        },
-      });
-
-      logger.info("AI Worker success", contentId);
-      return { ok: true };
-
-    } catch (err) {
-      logger.error("AI Worker failed", err.message);
-
-      await FetchedContent.findByIdAndUpdate(contentId, {
-        $set: {
-          processing: false,
-          processingAt: null,
-          isQueued: false,
-          aiError: err.message?.slice(0, 512) || "unknown",
-        },
-      });
-
-      throw err;
+    const post = await GeneratedPost.findById(postId);
+    if (!post || post.text) {
+      logger.warn(`Post not found or already has text: ${postId}`);
+      return;
     }
+
+    await GeneratedPost.findByIdAndUpdate(postId, {
+      $set: { status: "generating" },
+    });
+
+    const content = await FetchedContent.findById(post.articleId);
+    if (!content) {
+      logger.error(`Content not found for articleId: ${post.articleId}`);
+      throw new Error("Content not found");
+    }
+
+    const text = await aiService.generateForContent(content);
+    logger.info(`Generated text for postId: ${postId}`);
+      await GeneratedPost.findByIdAndUpdate(postId, {
+        $set: {
+          status: "queued",
+          text,
+          title: content.title, 
+        },
+      });
+
+      const updatedPost = await GeneratedPost.findById(postId);
+      const delay = Math.max(new Date(updatedPost.publishAt).getTime() - Date.now(), 0);
+
+    await linkedinQueue.add(
+      JOB_TYPES.POST_TO_LINKEDIN,
+      { postId },
+      {
+        jobId: `linkedin-${postId}`,
+        delay,
+      },
+    );
+    logger.info(`AI job completed for ${postId} with delay: ${delay}ms`);
   },
-  {
-    connection: redisConnection.connection,
-    concurrency: 1,
-  }
+  { connection: redisConnection.connection },
 );
 
-export default worker;

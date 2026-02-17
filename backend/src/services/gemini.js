@@ -1,30 +1,38 @@
 import dotenv from "dotenv";
 dotenv.config();
+
 import axios from "axios";
 
 export default async function generateAIResponse(prompt) {
-  try {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error("Missing Gemini API Key");
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("Missing GEMINI_API_KEY");
 
-    const response = await axios.post(
-      url,
+  const url =
+    "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent";
+
+  try {
+    const { data } = await axios.post(
+      `${url}?key=${apiKey}`,
       {
-        contents: [
-          { parts: [{ text: prompt }] }
-        ]
+        contents: [{ parts: [{ text: prompt }] }],
       },
       {
-        timeout: 15000,
-        headers: { "Content-Type": "application/json" }
+        timeout: 20000,
+        headers: { "Content-Type": "application/json" },
       }
     );
 
-    const text = response?.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    return text || null;
-  } catch (error) {
-    console.error("[Gemini API Error]", error.response?.data || error.message);
-    return null;
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!text) throw new Error("Gemini returned empty content");
+
+    return text.trim();
+  } catch (err) {
+    // IMPORTANT → throw, never swallow
+    throw new Error(
+      `Gemini request failed: ${
+        err?.response?.data?.error?.message || err.message
+      }`
+    );
   }
 }

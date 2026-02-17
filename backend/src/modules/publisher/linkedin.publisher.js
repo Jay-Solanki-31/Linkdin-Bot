@@ -4,22 +4,25 @@ import logger from "../../utils/logger.js";
 
 async function getTokenRecord() {
   const token = await LinkedInToken.findById("linkedin_app_token");
-  if (!token) throw new Error("LinkedIn not connected");
 
-  if (!token.memberUrn)
-    throw new Error("LinkedIn member URN missing. Reconnect LinkedIn login.");
+  if (!token?.accessToken) throw new Error("LinkedIn not connected");
+  if (!token?.memberUrn) throw new Error("LinkedIn member URN missing");
 
   return token;
 }
 
 export async function publishToLinkedIn({ text }) {
-  const tokenRecord = await getTokenRecord(); 
-  const accessToken = tokenRecord.accessToken;
-  const author = tokenRecord.memberUrn;
+  if (!text || text.length < 10)
+    throw new Error("Invalid post text");
+
+  // LinkedIn limit ≈ 3000
+  const safeText = text.slice(0, 2900);
+
+  const { accessToken, memberUrn: author } = await getTokenRecord();
 
   const payload = {
     author,
-    commentary: text,
+    commentary: safeText,
     visibility: "PUBLIC",
     distribution: {
       feedDistribution: "MAIN_FEED",
@@ -31,10 +34,11 @@ export async function publishToLinkedIn({ text }) {
   };
 
   try {
-    const response = await axios.post(
+    const { data } = await axios.post(
       "https://api.linkedin.com/rest/posts",
       payload,
       {
+        timeout: 15000,
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
@@ -44,14 +48,10 @@ export async function publishToLinkedIn({ text }) {
       }
     );
 
-    logger.info("LinkedIn Post Success", response.data);
-    return { ok: true, data: response.data };
+    logger.info("LinkedIn Post Success", data);
+    return { ok: true, data };
   } catch (err) {
-    logger.error(
-      "LinkedIn REST Post Failed",
-      err?.response?.data,
-      err?.response?.config?.headers
-    );
-    throw err;
+    logger.error("LinkedIn publish failed", err?.response?.data || err.message);
+    throw err; 
   }
 }

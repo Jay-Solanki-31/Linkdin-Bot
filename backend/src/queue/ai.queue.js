@@ -11,7 +11,10 @@ export const aiQueue = new Queue("ai-processing-queue", {
     removeOnFail: false,
   },
 });
-
-export const addAIJob = async (contentId) => {
-  return aiQueue.add(JOB_TYPES.GENERATE_POST, { contentId });
+export const addAIJob = async (postId) => {
+  return aiQueue.add(
+    JOB_TYPES.GENERATE_POST,
+    { postId },
+    { jobId: `ai-${postId}` }
+  );
 };

@@ -3,7 +3,7 @@ import { redisConnection } from "./connection.js";
 import { JOB_TYPES } from "./jobTypes.js";
 
 export const linkedinQueue = new Queue("linkedin-queue", {
-  connection: redisConnection
+  connection: redisConnection.connection
 });
 
 export async function enqueueLinkedInPost(postId) {
