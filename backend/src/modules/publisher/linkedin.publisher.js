@@ -11,18 +11,26 @@ async function getTokenRecord() {
   return token;
 }
 
-export async function publishToLinkedIn({ text }) {
-  if (!text || text.length < 10)
+export async function publishToLinkedIn({ text, url }) {
+  if (!text || text.length < 10) {
     throw new Error("Invalid post text");
-
-  // LinkedIn limit ≈ 3000
-  const safeText = text.slice(0, 2900);
+  }
 
   const { accessToken, memberUrn: author } = await getTokenRecord();
 
+  let finalText = text.trim();
+
+  if (url) {
+    finalText += `\n\n🔗 Read more: ${url}`;
+  }
+
+  if (finalText.length > 2900) {
+    finalText = finalText.slice(0, 2890) + "...";
+  }
+
   const payload = {
     author,
-    commentary: safeText,
+    commentary: finalText,
     visibility: "PUBLIC",
     distribution: {
       feedDistribution: "MAIN_FEED",
@@ -43,15 +51,18 @@ export async function publishToLinkedIn({ text }) {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
           "X-Restli-Protocol-Version": "2.0.0",
-          "LinkedIn-Version": "202511", 
+          "LinkedIn-Version": "202511",
         },
       }
     );
 
-    logger.info("LinkedIn Post Success", data);
+    logger.info("LinkedIn Post Success");
     return { ok: true, data };
   } catch (err) {
-    logger.error("LinkedIn publish failed", err?.response?.data || err.message);
-    throw err; 
+    logger.error(
+      "LinkedIn publish failed",
+      err?.response?.data || err.message
+    );
+    throw err;
   }
 }

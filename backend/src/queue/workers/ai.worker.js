@@ -19,15 +19,19 @@ export default new Worker(
     const { postId } = job.data;
     logger.info(`Processing AI job for postId: ${postId}`);
 
-    const post = await GeneratedPost.findById(postId);
-    if (!post || post.text) {
-      logger.warn(`Post not found or already has text: ${postId}`);
+    const post = await GeneratedPost.findOneAndUpdate(
+      {
+        _id: postId,
+        status: { $in: ["draft"] },
+      },
+      { $set: { status: "generating" } },
+      { new: true }
+    );
+
+    if (!post) {
+      logger.warn(`Post not eligible for AI generation: ${postId}`);
       return;
     }
-
-    await GeneratedPost.findByIdAndUpdate(postId, {
-      $set: { status: "generating" },
-    });
 
     const content = await FetchedContent.findById(post.articleId);
     if (!content) {
@@ -37,16 +41,18 @@ export default new Worker(
 
     const text = await aiService.generateForContent(content);
     logger.info(`Generated text for postId: ${postId}`);
-      await GeneratedPost.findByIdAndUpdate(postId, {
-        $set: {
-          status: "queued",
-          text,
-          title: content.title, 
-        },
-      });
 
-      const updatedPost = await GeneratedPost.findById(postId);
-      const delay = Math.max(new Date(updatedPost.publishAt).getTime() - Date.now(), 0);
+    post.status = "queued";
+    post.text = text;
+    post.title = content.title;
+    post.url = content.url; 
+
+    await post.save();
+
+    const delay = Math.max(
+      new Date(post.publishAt).getTime() - Date.now(),
+      0
+    );
 
     await linkedinQueue.add(
       JOB_TYPES.POST_TO_LINKEDIN,
@@ -54,10 +60,13 @@ export default new Worker(
       {
         jobId: `linkedin-${postId}`,
         delay,
-      },
+      }
     );
-    logger.info(`AI job completed for ${postId} with delay: ${delay}ms`);
+
+    logger.info(
+      `AI job completed for ${postId} with delay: ${delay}ms`
+    );
   },
-  { connection: redisConnection.connection },
+  { connection: redisConnection.connection }
 );
 

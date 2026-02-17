@@ -13,7 +13,7 @@ const GeneratedPostSchema = new mongoose.Schema({
   source: { type: String },
   status: {
     type: String,
-    enum: ["draft", "queued", "posted", "failed", "publishing"],
+    enum: ["draft", "generating", "queued", "publishing", "posted", "failed"],
     default: "draft",
     index: true
   },
