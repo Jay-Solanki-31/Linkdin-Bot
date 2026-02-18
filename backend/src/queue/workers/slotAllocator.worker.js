@@ -18,7 +18,7 @@ await connectDB();
 
 /*
   Tuesday, Wednesday, Thursday
-  10:00 and 18:00
+  10:00 and 18:00 IST
 */
 const SLOT_TIMES = [
   { day: 2, hour: 10 },
@@ -29,77 +29,110 @@ const SLOT_TIMES = [
   { day: 4, hour: 18 },
 ];
 
+function generateFutureSlots(now) {
+  const slots = SLOT_TIMES.map(({ day, hour }) => {
+    let slot = now
+      .startOf("week")
+      .add(day, "day")
+      .hour(hour)
+      .minute(0)
+      .second(0)
+      .millisecond(0);
+
+    // If already passed → move to next week
+    if (slot.isBefore(now)) {
+      slot = slot.add(1, "week");
+    }
+
+    return slot.toDate();
+  });
+
+  //  sort chronologically
+  return slots.sort((a, b) => a.getTime() - b.getTime());
+}
+
 export default new Worker(
   "slot-allocator-queue",
   async () => {
-    const now = dayjs();
-    const year = now.year();
-    const week = String(now.week()).padStart(2, "0");
-    const weekKey = `${year}-W${week}`;
+    try {
+      const now = dayjs();
+      const weekKey = `${now.year()}-W${String(now.week()).padStart(2, "0")}`;
 
-    logger.info(`[SlotAllocator] Allocating for ${weekKey}`);
+      logger.info(`[SlotAllocator] Allocating for ${weekKey}`);
 
-    // already allocated articles THIS WEEK only
-    const usedArticleIds = await GeneratedPost.distinct("articleId", {
-      publishAt: {
-        $gte: now.startOf("week").toDate(),
-        $lte: now.endOf("week").toDate(),
-      },
-    });
+      const allSlots = generateFutureSlots(now);
 
-    const contents = await FetchedContent.find({
-      _id: { $nin: usedArticleIds },
-    }).limit(SLOT_TIMES.length);
+      const existingPosts = await GeneratedPost.find({
+        publishAt: { $in: allSlots },
+      }).select("publishAt articleId");
 
-    let allocated = 0;
+      const usedSlotTimes = existingPosts.map(p =>
+        new Date(p.publishAt).getTime()
+      );
 
-    for (let i = 0; i < contents.length; i++) {
-      const slot = SLOT_TIMES[i];
+      const freeSlots = allSlots.filter(
+        slot => !usedSlotTimes.includes(slot.getTime())
+      );
 
-      let publishAt = dayjs()
-        .startOf("week")
-        .add(slot.day, "day")
-        .hour(slot.hour)
-        .minute(0)
-        .second(0);
+      logger.info(`Free slots: ${freeSlots.length}`);
 
-      if (publishAt.isBefore(dayjs())) {
-        publishAt = publishAt.add(1, "week");
+      if (!freeSlots.length) return;
+
+      const usedArticleIds = existingPosts.map(p => p.articleId);
+
+      const contents = await FetchedContent.find({
+        _id: { $nin: usedArticleIds },
+      })
+        .sort({ createdAt: 1 });
+
+      if (!contents.length) {
+        logger.info("No new content available");
+        return;
       }
 
-      publishAt = publishAt.toDate();
+    
+      // Only allocate as many as we have content for
+      const allocationCount = Math.min(
+        freeSlots.length,
+        contents.length
+      );
 
-      const result = await GeneratedPost.updateOne(
-        { articleId: contents[i]._id },
-        {
-          $setOnInsert: {
+      logger.info(`Allocating ${allocationCount} posts`);
+
+      for (let i = 0; i < allocationCount; i++) {
+        try {
+          const publishAt = freeSlots[i];
+
+          logger.info(
+            `Assigning ${publishAt.toISOString()} → ${contents[i]._id}`
+          );
+
+          const post = await GeneratedPost.create({
             articleId: contents[i]._id,
             status: "draft",
             publishAt,
-          },
-        },
-        { upsert: true },
-      );
+          });
 
-      if (result.upsertedCount === 1) {
-        const post = await GeneratedPost.findOne({
-          articleId: contents[i]._id,
-        });
+          await aiQueue.add(
+            JOB_TYPES.GENERATE_POST,
+            { postId: post._id },
+            { jobId: `ai-${post._id}` }
+          );
 
-        await aiQueue.add(
-          JOB_TYPES.GENERATE_POST,
-          { postId: post._id },
-          { jobId: `ai-${post._id}` },
-        );
-
-        allocated++;
+        } catch (err) {
+          logger.error(
+            `Allocation failed for article ${contents[i]._id}: ${err.message}`
+          );
+        }
       }
-    }
 
-    logger.info(`[SlotAllocator] Allocated ${allocated} posts`);
+      logger.info(`[SlotAllocator] Allocation completed`);
+    } catch (err) {
+      logger.error(`[SlotAllocator] Fatal error: ${err.message}`);
+    }
   },
   {
     connection: redisConnection.connection,
     concurrency: 1,
-  },
+  }
 );

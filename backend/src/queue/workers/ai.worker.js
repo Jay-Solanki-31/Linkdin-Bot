@@ -25,7 +25,7 @@ export default new Worker(
         status: { $in: ["draft"] },
       },
       { $set: { status: "generating" } },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     if (!post) {

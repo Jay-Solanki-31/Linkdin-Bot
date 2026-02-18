@@ -20,7 +20,7 @@ export default new Worker(
         publishAt: { $lte: new Date() },
       },
       { $set: { status: "publishing" } },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     if (!post) {

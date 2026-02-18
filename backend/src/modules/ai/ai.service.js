@@ -59,7 +59,7 @@ Output only the post text.
       return text;
     } catch (err) {
       logger.error("Gemini API Error:", err?.message || err);
-      throw err; // important → let queue retry
+      throw err; 
     }
   }
 

@@ -84,7 +84,7 @@ router.get("/callback", async (req, res) => {
         expiresAt,
         memberUrn
       },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     );
 
     delete req.session.linkedinState;

@@ -8,7 +8,7 @@ const GeneratedPostSchema = new mongoose.Schema({
   },
 
   title: { type: String, default: "" },
-  text: { type: String, required: true },
+  text: { type: String },
   url: { type: String },
   source: { type: String },
   status: {
