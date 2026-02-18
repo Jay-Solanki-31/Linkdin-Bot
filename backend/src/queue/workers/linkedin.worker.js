@@ -31,7 +31,7 @@ export default new Worker(
     try {
       logger.info(`Publishing post ${postId} to LinkedIn...`);
 
-      const result = await publishToLinkedIn({text: post.text,url: post.url,});
+      const result = await publishToLinkedIn({text: post.text,url: post.url,title: post.title});
       
       await GeneratedPost.findByIdAndUpdate(postId, {
         $set: {

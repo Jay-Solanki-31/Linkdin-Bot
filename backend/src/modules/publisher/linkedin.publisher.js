@@ -11,26 +11,24 @@ async function getTokenRecord() {
   return token;
 }
 
-export async function publishToLinkedIn({ text, url }) {
+export async function publishToLinkedIn({ text, url, title }) {
   if (!text || text.length < 10) {
     throw new Error("Invalid post text");
   }
 
+  if (!url) {
+    throw new Error("URL is required for article share post");
+  }
+
   const { accessToken, memberUrn: author } = await getTokenRecord();
 
-  let finalText = text.trim();
-
-  if (url) {
-    finalText += `\n\n🔗 Read more: ${url}`;
-  }
-
-  if (finalText.length > 2900) {
-    finalText = finalText.slice(0, 2890) + "...";
-  }
+  // Keep caption clean & readable
+  const safeText =
+    text.length > 1300 ? text.slice(0, 1290) + "..." : text;
 
   const payload = {
     author,
-    commentary: finalText,
+    commentary: safeText,
     visibility: "PUBLIC",
     distribution: {
       feedDistribution: "MAIN_FEED",
@@ -38,7 +36,13 @@ export async function publishToLinkedIn({ text, url }) {
       thirdPartyDistributionChannels: [],
     },
     lifecycleState: "PUBLISHED",
-    isReshareDisabledByAuthor: false,
+
+    content: {
+      article: {
+        source: url,
+        title: title || "Read more",
+      },
+    },
   };
 
   try {
@@ -56,7 +60,7 @@ export async function publishToLinkedIn({ text, url }) {
       }
     );
 
-    logger.info("LinkedIn Post Success");
+    logger.info("LinkedIn Article Share Post Success");
     return { ok: true, data };
   } catch (err) {
     logger.error(
