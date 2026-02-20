@@ -31,7 +31,12 @@ GeneratedPostSchema.index({ articleId: 1 }, { unique: true });
 
 GeneratedPostSchema.index(
   { linkedinPostUrn: 1 },
-  { unique: true, sparse: true }
+  {
+    unique: true,
+    partialFilterExpression: {
+      linkedinPostUrn: { $type: "string" }
+    }
+  }
 );
 
 GeneratedPostSchema.index({ slot: 1, status: 1 });

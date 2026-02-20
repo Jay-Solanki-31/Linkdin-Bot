@@ -1,4 +1,5 @@
 import { enqueueLinkedInPost } from "../queue/linkedin.queue.js";
+import GeneratedPost from "../models/generatedPost.model.js";
 
 export async function publishGeneratedPost(req, res) {
   try {
@@ -8,6 +9,22 @@ export async function publishGeneratedPost(req, res) {
       return res.status(400).json({
         success: false,
         message: "Post ID is required",
+      });
+    }
+
+    const post = await GeneratedPost.findById(id);
+
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: "Post not found",
+      });
+    }
+
+    if (post.status === "posted") {
+      return res.status(400).json({
+        success: false,
+        message: "Post already published",
       });
     }
 

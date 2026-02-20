@@ -45,28 +45,45 @@ export async function publishToLinkedIn({ text, url, title }) {
     },
   };
 
-  try {
-    const { data } = await axios.post(
-      "https://api.linkedin.com/rest/posts",
-      payload,
-      {
-        timeout: 15000,
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          "X-Restli-Protocol-Version": "2.0.0",
-          "LinkedIn-Version": "202511",
-        },
-      }
-    );
+ try {
+  const response = await axios.post(
+    "https://api.linkedin.com/rest/posts",
+    payload,
+    {
+      timeout: 15000,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        "X-Restli-Protocol-Version": "2.0.0",
+        "LinkedIn-Version": "202511",
+      },
+      validateStatus: (status) => status < 500, 
+    }
+  );
 
-    logger.info("LinkedIn Article Share Post Success");
-    return { ok: true, data };
-  } catch (err) {
-    logger.error(
-      "LinkedIn publish failed",
-      err?.response?.data || err.message
-    );
-    throw err;
+  if (response.status !== 201) {
+    logger.error("Unexpected LinkedIn status:", response.status);
+    logger.error("Response body:", response.data);
+    throw new Error("LinkedIn post creation failed");
   }
+
+  const urn = response.headers["x-restli-id"];
+
+  if (!urn) {
+    logger.error("LinkedIn headers:", response.headers);
+    throw new Error("LinkedIn did not return a post URN");
+  }
+
+  logger.info(`LinkedIn Post Success: ${urn}`);
+
+  return { ok: true, urn };
+
+} catch (err) {
+  logger.error(
+    "LinkedIn publish failed",
+    err?.response?.data || err.message
+  );
+  throw err;
+}
+
 }

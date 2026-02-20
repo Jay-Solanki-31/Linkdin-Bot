@@ -20,29 +20,40 @@ export default new Worker(
         publishAt: { $lte: new Date() },
       },
       { $set: { status: "publishing" } },
-      { returnDocument: 'after' }
+      { returnDocument: "after" },
     );
 
     if (!post) {
-      logger.info(`Post ${postId} not eligible for publishing (either scheduled for future or already processed).`);
+      logger.info(
+        `Post ${postId} not eligible for publishing (either scheduled for future or already processed).`,
+      );
       return;
     }
 
     try {
       logger.info(`Publishing post ${postId} to LinkedIn...`);
 
-      const result = await publishToLinkedIn({text: post.text,url: post.url,title: post.title});
-      
+      const result = await publishToLinkedIn({
+        text: post.text,
+        url: post.url,
+        title: post.title,
+      });
+
+      const urn = result?.urn;
+
+      if (!urn) {
+        throw new Error("LinkedIn did not return a post URN");
+      }
+
       await GeneratedPost.findByIdAndUpdate(postId, {
         $set: {
           status: "posted",
-          linkedinPostUrn: result?.data?.id || null,
+          linkedinPostUrn: urn,
           error: null,
         },
       });
 
-      logger.info(`Post successfully published: ${postId}`);
-
+      logger.info(`Post successfully published: ${postId} → ${urn}`);
     } catch (err) {
       logger.error(`Publishing failed for ${postId}: ${err.message}`);
 
@@ -59,6 +70,6 @@ export default new Worker(
   },
   {
     connection: redisConnection.connection,
-    concurrency: 1, 
-  }
+    concurrency: 1,
+  },
 );
