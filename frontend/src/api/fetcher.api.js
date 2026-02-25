@@ -5,6 +5,6 @@ export const startFetch = (source) => {
   return api.post(`/api/start/${source}`);
 };
 
-export const getFetchedContent = () => {
-  return api.get("/api/fetch");
+export const getFetchedContent = (params) => {
+  return api.get("/api/fetch", { params });
 };

@@ -19,29 +19,43 @@ class AIService {
     const hasUsefulContext = safeDesc.length > 80;
 
     const prompt = `
-You are a LinkedIn creator sharing a thoughtful discovery with your professional network.
+      You are a JavaScript / Node.js engineer sharing a high-signal technical takeaway with your professional network.
 
-Write ONE natural LinkedIn post.
+      Context:
+      The content comes from an external source (GitHub, Dev.to, Hashnode, Hacker News, Medium, npm, or a newsletter).
+      You did NOT build or create this.
+      Never imply personal ownership.
 
-Rules:
-- 3–5 sentences
-- exactly ONE emoji mid sentence
-- conversational tone
-- no hashtags
-- no marketing language
-- end with soft discussion invite
+      Perspective Rules:
+      - Frame it as something you came across or explored.
+      - Do NOT adopt first-person claims from the title.
+      - If the title is written in first person, reinterpret it in third person before writing.
+      - Do not exaggerate impact.
 
-Title: ${safeTitle}
-Description: ${
-      hasUsefulContext
-        ? safeDesc
-        : "Use the title to infer a single thoughtful takeaway."
-    }
-Source: ${safeSource || "the original author"}
-URL: ${safeUrl}
+      Goal:
+      Extract ONE meaningful technical insight (architecture, performance, tooling, ecosystem trend, or developer workflow).
+      Avoid summarizing the entire article.
 
-Output only the post text.
-`;
+      Post Constraints:
+      - 3–5 sentences
+      - exactly ONE emoji placed naturally mid-sentence
+      - sharp, thoughtful tone
+      - no hashtags
+      - no marketing language
+      - no generic praise
+      - end with a soft discussion prompt
+
+      Title: ${safeTitle}
+      Description: ${
+        hasUsefulContext
+          ? safeDesc
+          : "Infer a meaningful technical takeaway from the title."
+      }
+      Source: ${safeSource || "the original author"}
+      URL: ${safeUrl}
+
+      Output only the post text.
+      `;
 
     try {
       let text = await generateAIResponse(prompt);

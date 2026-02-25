@@ -26,18 +26,38 @@ import { toast } from "sonner";
 export default function FetcherList() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
+
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const [selected, setSelected] = useState(null);
+
   const pageSize = 10;
 
- 
-  const [selected, setSelected] = useState(null);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setPage(1);
+      setDebouncedSearch(search);
+    }, 500);
+
+    return () => clearTimeout(handler);
+  }, [search]);
 
   const loadData = async () => {
     try {
-      const res = await getFetchedContent();
-      setRecords(res.data?.data || res.data || []);
+      setLoading(true);
+
+      const res = await getFetchedContent({
+        page,
+        limit: pageSize,
+        search: debouncedSearch,
+      });
+
+      setRecords(res.data.data);
+      setTotalPages(res.data.pagination.pages || 1);
     } catch (err) {
       toast.error("Failed to load fetched records");
     } finally {
@@ -47,30 +67,15 @@ export default function FetcherList() {
 
   useEffect(() => {
     loadData();
+  }, [page, debouncedSearch]);
 
-    // refresh every 15s (reasonable for admin)
-    const interval = setInterval(loadData, 15000);
-    return () => clearInterval(interval);
-  }, []);
+  const nextPage = () => {
+    if (page < totalPages) setPage((p) => p + 1);
+  };
 
-
-  const filtered = records.filter((r) => {
-    const title = r.title?.toLowerCase() || "";
-    const source = r.source?.toLowerCase() || "";
-    return (
-      title.includes(search.toLowerCase()) ||
-      source.includes(search.toLowerCase())
-    );
-  });
-
-
-  const totalPages = Math.ceil(filtered.length / pageSize);
-  const startIndex = (page - 1) * pageSize;
-  const currentPageData = filtered.slice(startIndex, startIndex + pageSize);
-
-  const nextPage = () => page < totalPages && setPage((p) => p + 1);
-  const prevPage = () => page > 1 && setPage((p) => p - 1);
-
+  const prevPage = () => {
+    if (page > 1) setPage((p) => p - 1);
+  };
 
   return (
     <div className="space-y-6">
@@ -88,10 +93,7 @@ export default function FetcherList() {
           <Input
             placeholder="Search by title or source..."
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => setSearch(e.target.value)}
           />
         </CardHeader>
 
@@ -102,7 +104,7 @@ export default function FetcherList() {
                 <Skeleton key={i} className="h-10 w-full" />
               ))}
             </div>
-          ) : currentPageData.length > 0 ? (
+          ) : records.length > 0 ? (
             <>
               <div className="overflow-x-auto">
                 <Table>
@@ -110,8 +112,6 @@ export default function FetcherList() {
                     <TableRow>
                       <TableHead>Title</TableHead>
                       <TableHead>Source</TableHead>
-                      <TableHead>AI</TableHead>
-                      <TableHead>Queued</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead className="text-right">
                         Action
@@ -120,7 +120,7 @@ export default function FetcherList() {
                   </TableHeader>
 
                   <TableBody>
-                    {currentPageData.map((item) => (
+                    {records.map((item) => (
                       <TableRow key={item._id} className="hover:bg-muted/40">
                         <TableCell className="max-w-xs truncate text-sm font-medium">
                           {item.title}
@@ -130,28 +130,6 @@ export default function FetcherList() {
                           <Badge variant="secondary" className="text-xs">
                             {item.source}
                           </Badge>
-                        </TableCell>
-
-                        <TableCell>
-                          {item.aiGenerated ? (
-                            <Badge className="bg-green-100 text-green-700 text-xs">
-                              Yes
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-xs">
-                              No
-                            </Badge>
-                          )}
-                        </TableCell>
-
-                        <TableCell>
-                          {item.isQueued ? (
-                            <Badge className="bg-yellow-100 text-yellow-700 text-xs">
-                              Queued
-                            </Badge>
-                          ) : (
-                            "-"
-                          )}
                         </TableCell>
 
                         <TableCell className="text-xs text-muted-foreground">
@@ -220,8 +198,6 @@ function RecordViewer({ record, onClose }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex justify-end">
       <div className="w-full max-w-2xl bg-background h-full flex flex-col shadow-xl">
-
-        {/* header */}
         <div className="p-4 border-b flex justify-between items-center">
           <h2 className="font-semibold">Article Preview</h2>
           <Button size="sm" variant="outline" onClick={onClose}>
@@ -229,12 +205,8 @@ function RecordViewer({ record, onClose }) {
           </Button>
         </div>
 
-        {/* body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
-
-          <h3 className="text-lg font-semibold">
-            {record.title}
-          </h3>
+          <h3 className="text-lg font-semibold">{record.title}</h3>
 
           <div className="flex gap-2">
             <Badge>{record.source}</Badge>

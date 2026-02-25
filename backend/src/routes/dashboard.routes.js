@@ -1,6 +1,7 @@
 import express from "express";
 import { QueueEvents } from "bullmq";
 import FetchedContent from "../models/fetchedContent.model.js";
+import GeneratedPost from "../models/generatedPost.model.js";
 import { fetcherQueue } from "../queue/fetcher.queue.js";
 import { aiQueue } from "../queue/ai.queue.js";
 import { redisConnection } from "../queue/connection.js";
@@ -39,11 +40,11 @@ router.get("/", async (req, res) => {
       aiQueue.getJobCounts(),
       FetchedContent.countDocuments(),
       FetchedContent.countDocuments({ createdAt: { $gte: today } }),
-      FetchedContent.countDocuments({ aiGenerated: true }),
+      GeneratedPost.countDocuments(),
       FetchedContent.find()
         .sort({ createdAt: -1 })
         .limit(5)
-        .select("title source createdAt aiGenerated"),
+        .select("title source createdAt"),
       redisConnection.connection.ping().then(
         () => true,
         () => false

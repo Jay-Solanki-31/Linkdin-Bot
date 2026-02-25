@@ -1,6 +1,7 @@
 
 import { fetcherQueue } from "../queue/fetcher.queue.js";
 import FetcherService from "../modules/fetchers/fetcher.service.js";
+import FetchedContent from  "../models/fetchedContent.model.js"
 
 export const startFetch = async (req, res) => {
   const { source } = req.params;
@@ -31,14 +32,51 @@ const job = await fetcherQueue.add(
   });
 };
 export const getFetchedData = async (req, res) => {
-  const source = req.query.source;
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      search = "",
+      source,
+    } = req.query;
 
-  if (!source) {
-    return res.status(400).json({ success: false, message: "source query param is required to enqueue a fetch job" });
+    const pageNumber = parseInt(page);
+    const pageSize = parseInt(limit); 
+
+    const filter = {};
+
+    if (source) {
+      filter.source = source;
+    }
+
+    if (search) {
+      filter.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { source: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const total = await FetchedContent.countDocuments(filter);
+
+    const records = await FetchedContent.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((pageNumber - 1) * pageSize)
+      .limit(pageSize)
+      .lean();
+
+    return res.json({
+      success: true,
+      data: records,
+      pagination: {
+        total,
+        page: pageNumber,
+        pages: Math.ceil(total / pageSize),
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch records",
+    });
   }
-
-  // Enqueue a fetch job for the requested source instead of polling DB here.
-  const job = await fetcherQueue.add("FETCH_CONTENT", { source });
-
-  res.json({ success: true, message: `Fetch job enqueued for ${source}`, jobId: job.id });
 };

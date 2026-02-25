@@ -14,7 +14,7 @@ export default function Sidebar() {
     { label: "Records", path: "/records", icon: FileText },
     // { label: "Fetched", path: "/fetched", icon: FileText },
     { label: "AI Posts", path: "/posts", icon: Zap },
-    { label: "Queue", path: "/queue", icon: PackageOpen },
+    // { label: "Queue", path: "/queue", icon: PackageOpen },
   ];
 
   return (

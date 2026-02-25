@@ -22,12 +22,15 @@ router.get("/", async (req, res) => {
     res.json({
       data: items.map((post) => ({
         _id: post._id,
+        articleId: post.articleId,
         title: post.title,
         text: post.text,
         url: post.url,
-        source: post.source,
         status: post.status,
+        attempts: post.attempts,
+        publishAt: post.publishAt,   
         createdAt: post.createdAt,
+        updatedAt: post.updatedAt,
       })),
       pagination: {
         page,
@@ -80,5 +83,41 @@ router.put("/:id", async (req, res) => {
     });
   }
 });
+
+router.delete("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const post = await GeneratedPost.findById(id);
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: "Post not found",
+      });
+    }
+
+  
+    if (post.status === "posted") {
+      return res.status(400).json({
+        success: false,
+        message: "Posted content cannot be deleted",
+      });
+    }
+
+    await post.deleteOne();
+
+    return res.json({
+      success: true,
+      message: "Post deleted successfully",
+    });
+  } catch (err) {
+    console.error("Delete AI Post error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete post",
+    });
+  }
+});
+
 
 export default router;
