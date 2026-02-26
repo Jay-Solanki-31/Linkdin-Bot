@@ -502,6 +502,7 @@ backend/
 │   │   ├── ai.queue.js                  # BullMQ: AI generation queue
 │   │   ├── linkedin.queue.js            # BullMQ: LinkedIn publish queue
 │   │   ├── jobTypes.js                  # Job type constants
+│   │   ├── slotAllocator.queue.js       # BullMQ: slot generation queue
 │   │   └── workers/
 │   │       ├── fetcher.worker.js        # Worker: Processes fetch jobs
 │   │       ├── ai.worker.js             # Worker: Processes AI jobs
@@ -514,6 +515,7 @@ backend/
 │   │   ├── linkedinAuth.routes.js       # LinkedIn OAuth routes
 │   │   ├── publisher.routes.js          # LinkedIn publish triggers
 │   │   ├── dashboard.routes.js          # Dashboard stats
+│   │   ├── slotAllocator.routes.js      # slotAllocator stats
 │   │   └── test.routes.js               # Testing endpoints
 │   ├── services/
 │   │   ├── gemini.js                    # Google Gemini API wrapper
@@ -536,9 +538,11 @@ frontend/
 │   ├── main.jsx                         # React entry point
 │   ├── App.css, index.css               # Global styles
 │   ├── api/
-│   │   ├── linkedin.js                  # LinkedIn API calls
+│   │   ├── linkedin.js                 # LinkedIn API calls
 │   │   ├── aiPosts.api.js              # AI posts API calls
-│   │   └── publisher.api.js            # Publishing API calls
+│   │   └── dashboard.api.js            # dashboard API calls
+│   │   └── fetcher.api.js              # fetcher  API calls
+│   │   └── index.js                    # setup backend url 
 │   ├── components/
 │   │   ├── ThemeToggle.jsx             # Dark/Light mode toggle
 │   │   ├── LinkedInStatus.jsx          # LinkedIn connection status
@@ -554,8 +558,7 @@ frontend/
 │   │   ├── Dashboard.jsx               # Overview statistics
 │   │   ├── Fetcher.jsx                 # Manual fetch interface
 │   │   ├── FetcherList.jsx             # View fetched articles
-│   │   ├── AiGeratepost.jsx           # View AI-generated posts
-│   │   └── QueueMonitor.jsx            # Job queue monitoring
+│   │   ├── Aiposts.jsx                 # View AI-generated posts
 │   ├── lib/
 │   │   └── utils.js                    # Utility functions
 │   └── assets/                          # Static assets
