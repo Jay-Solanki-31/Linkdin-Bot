@@ -742,7 +742,6 @@ For issues, questions, or suggestions, please open an issue in the repository.
 
 - [ ] Add more content sources (YouTube, Substack, Dev Community)
 - [ ] Implement user authentication for frontend
-- [ ] Add post scheduling (publish at specific times)
 - [ ] Support multiple LinkedIn accounts
 - [ ] Analytics dashboard (engagement metrics)
 - [ ] Mobile app support

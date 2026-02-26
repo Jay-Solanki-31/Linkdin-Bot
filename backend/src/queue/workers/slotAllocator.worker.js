@@ -1,6 +1,5 @@
 import { Worker } from "bullmq";
 import { redisConnection } from "../connection.js";
-import { connectDB } from "../../config/db.js";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear.js";
 
@@ -14,7 +13,6 @@ import logger from "../../utils/logger.js";
 
 dayjs.extend(weekOfYear);
 
-await connectDB();
 
 /*
   Tuesday, Wednesday, Thursday

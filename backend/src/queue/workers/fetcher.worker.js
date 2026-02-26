@@ -1,6 +1,5 @@
 import { Worker } from "bullmq";
 import { redisConnection } from "../connection.js";
-import { connectDB } from "../../config/db.js";
 
 import FetcherService from "../../modules/fetchers/fetcher.service.js";
 import FetchedContent from "../../models/fetchedContent.model.js";
@@ -9,7 +8,6 @@ import FetchedContent from "../../models/fetchedContent.model.js";
 
 import logger from "../../utils/logger.js";
 
-await connectDB();
 
 export default new Worker(
   "fetcher-queue",

@@ -9,9 +9,7 @@ import { linkedinQueue } from "../linkedin.queue.js";
 import { JOB_TYPES } from "../jobTypes.js";
 
 import logger from "../../utils/logger.js";
-import { connectDB } from "../../config/db.js";
 
-await connectDB();
 
 export default new Worker(
   "ai-processing-queue",

@@ -3,9 +3,6 @@ import { redisConnection } from "../connection.js";
 import GeneratedPost from "../../models/generatedPost.model.js";
 import { publishToLinkedIn } from "../../modules/publisher/linkedin.publisher.js";
 import logger from "../../utils/logger.js";
-import { connectDB } from "../../config/db.js";
-
-await connectDB();
 
 export default new Worker(
   "linkedin-queue",
@@ -17,6 +14,7 @@ export default new Worker(
       {
         _id: postId,
         status: { $nin: ["posted", "publishing"] },
+        linkedinPostUrn: { $exists: false },
         publishAt: { $lte: new Date() },
       },
       { $set: { status: "publishing" } },

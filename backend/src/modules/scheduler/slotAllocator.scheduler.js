@@ -12,5 +12,9 @@ export const startSlotAllocatorScheduler = () => {
     } catch (err) {
       logger.error("[SlotAllocator] Scheduler error", err);
     }
-  });
+  },
+  {
+      timezone: "Asia/Kolkata"
+  }
+);
 };

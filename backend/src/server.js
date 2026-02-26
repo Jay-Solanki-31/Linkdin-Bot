@@ -12,8 +12,6 @@ import { connectDB } from "./config/db.js";
 import fetcherRoute from "./routes/fetcher.route.js";
 import aiRoute from "./routes/ai.routes.js";
 
-import { startFetchScheduler } from "./modules/scheduler/fetchScheduler.js";
-import { startSlotAllocatorScheduler } from "./modules/scheduler/slotAllocator.scheduler.js";
 
 import linkedinAuthRoutes from "./routes/linkedinAuth.routes.js";
 
@@ -36,7 +34,7 @@ app.use(
 );
 app.use(
   session({
-    secret: "process.env.SESSION_SECRET",
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: true,
     cookie: {
@@ -70,15 +68,6 @@ async function start() {
   try {
     await connectDB();
     logger.info("DB connected — starting workers & scheduler");
-
-    await import("./queue/workers/fetcher.worker.js");
-    await import("./queue/workers/ai.worker.js");
-    await import("./queue/workers/linkedin.worker.js");
-    await import("./queue/workers/slotAllocator.worker.js")
-
-    startFetchScheduler();
-    startSlotAllocatorScheduler();
-
     app.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);
     });
