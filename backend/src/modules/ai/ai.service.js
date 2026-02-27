@@ -1,98 +1,82 @@
-// src/modules/ai/ai.service.js
+// ai.service.js
 import generateAIResponse from "../../services/gemini.js";
-import generatedPostService from "../../services/generatePostservice.js";
-import FetchedContent from "../../models/fetchedContent.model.js";
 import logger from "../../utils/logger.js";
 
+const clamp = (str = "", max = 700) =>
+  String(str).replace(/\s+/g, " ").trim().slice(0, max);
+
 class AIService {
-  // process a single content id (Used by worker)
-  async generateForContent(contentId) {
-    const item = await FetchedContent.findById(contentId);
-    if (!item) {
-      logger.warn("AIService: content not found:", contentId);
-      return null;
+  async generateForContent({ title, description, source, url }) {
+    if (!title && !description) {
+      throw new Error("AIService: empty content");
     }
 
-    // ensure this item isn't already aiGenerated
-    if (item.aiGenerated) {
-      logger.info("AIService: already generated for", contentId);
-      // ensure flags cleared
-      await FetchedContent.findByIdAndUpdate(contentId, { $set: { processing: false, processingAt: null, isQueued: false } });
-      return null;
-    }
+    const safeTitle = clamp(title, 200);
+    const safeDesc = clamp(description, 700);
+    const safeSource = clamp(source, 50);
+    const safeUrl = clamp(url, 300);
+
+    const hasUsefulContext = safeDesc.length > 80;
 
     const prompt = `
-Write a single LinkedIn post based *only* on the following information.
+      You are a JavaScript / Node.js engineer sharing a high-signal technical takeaway with your professional network.
 
-**Follow these refined rules strictly:**
+      Context:
+      The content comes from an external source (GitHub, Dev.to, Hashnode, Hacker News, Medium, npm, or a newsletter).
+      You did NOT build or create this.
+      Never imply personal ownership.
 
-* **Tone:** Professional, engaging, and conversational. The post should sound like a person sharing a valuable discovery or insight, not an advertisement.
-* **Structure & Length:** Exactly one version. The body must consist of **3 to 4 impactful sentences** maximum.
-* **Content Integration:** The post must summarize the main value/insight from the ${item.title} and ${item.description} to encourage reading.
-* **Engagement Element:** Include exactly **one relevant emoji** (not at the start, use it to highlight a key concept).
-* **Source Credit (Mandatory):** Mention the ${item.source} *naturally* within one of the sentences to credit the origin.
-* **Closing CTA:** The final sentence must be a short, direct Call-to-Action (CTA) that invites discussion or action (e.g., "What are your thoughts on this?", "Worth exploring?", "Let me know what you find.").
-* **Format:** Avoid all hashtags.
-* **URL Placement:** Include the ${item.url} at the very end, exactly as provided.
+      Perspective Rules:
+      - Frame it as something you came across or explored.
+      - Do NOT adopt first-person claims from the title.
+      - If the title is written in first person, reinterpret it in third person before writing.
+      - Do not exaggerate impact.
 
-**Content Data:**
-Title: ${item.title}
-Description: ${item.description || "No description provided. Focus solely on the title's implied value."}
-Source: ${item.source || "Unknown"}
-URL: ${item.url}
-`;
+      Goal:
+      Extract ONE meaningful technical insight (architecture, performance, tooling, ecosystem trend, or developer workflow).
+      Avoid summarizing the entire article.
 
-    let text;
+      Post Constraints:
+      - 3–5 sentences
+      - exactly ONE emoji placed naturally mid-sentence
+      - sharp, thoughtful tone
+      - no hashtags
+      - no marketing language
+      - no generic praise
+      - end with a soft discussion prompt
+
+      Title: ${safeTitle}
+      Description: ${
+        hasUsefulContext
+          ? safeDesc
+          : "Infer a meaningful technical takeaway from the title."
+      }
+      Source: ${safeSource || "the original author"}
+      URL: ${safeUrl}
+
+      Output only the post text.
+      `;
+
     try {
-      text = await generateAIResponse(prompt);
-    } catch (err) {
-      logger.error("Gemini API Error", err?.message || err);
-      // bubble up the error so worker's retry/backoff occurs
-      throw err;
-    }
+      let text = await generateAIResponse(prompt);
 
-    if (!text) {
-      logger.warn("AIService: no response for", contentId);
-      // unqueue & clear processing so it can be retried later by scheduler
-      await FetchedContent.findByIdAndUpdate(contentId, { $set: { isQueued: false, processing: false, processingAt: null, aiError: "no_response" } });
-      return null;
-    }
+      if (!text) throw new Error("Empty AI response");
 
-    try {
-      // save generated post
-      await generatedPostService.save(item._id, {
-        title: item.title,
-        text,
-        url: item.url,
-        source: item.source,
-      });
+      // cleanup
+      text = text
+        .replace(/```[\s\S]*?```/g, "")
+        .replace(/^["'\s]+|["'\s]+$/g, "")
+        .trim();
 
-      // mark processed
-      await FetchedContent.findByIdAndUpdate(contentId, {
-        $set: { aiGenerated: true, isQueued: false, processing: false, processingAt: null, aiError: null }
-      });
+      if (text.length < 30) throw new Error("AI output too short");
 
-      logger.info("AIService: generated for", contentId);
       return text;
     } catch (err) {
-      logger.error("AIService: save error", err?.message || err);
-      // persist error, release locks
-      await FetchedContent.findByIdAndUpdate(contentId, {
-        $set: { processing: false, processingAt: null, isQueued: false, aiError: err.message?.slice(0, 512) || "save_error" }
-      });
-      throw err;
+      logger.error("Gemini API Error:", err?.message || err);
+      throw err; 
     }
   }
 
-  // convenience: generate next unprocessed content (keeps previous behavior for routes)
-  async generateForNext() {
-    const item = await FetchedContent.findOne({ aiGenerated: false, isQueued: { $ne: true }, processing: { $ne: true } });
-    if (!item) return { status: "empty" };
-    // mark queued (so scheduler doesn't requeue)
-    await FetchedContent.findByIdAndUpdate(item._id, { $set: { isQueued: true } });
-    const text = await this.generateForContent(item._id.toString());
-    return { id: item._id, text };
-  }
 }
 
 export default new AIService();

@@ -1,36 +1,167 @@
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TrendingUp, Zap, Activity } from "lucide-react";
+import {DashboardSkeleton} from "@/components/ui/PostSkeleton";
+import { toast } from "sonner";
+import { fetchDashboard } from "@/api/dashboard.api";
 
 export default function Dashboard() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const loadDashboard = async () => {
+    try {
+      const res = await fetchDashboard();
+      setData(res.data);
+      setLoading(false);
+    } catch (err) {
+      console.log("Dashboard Load Error:", err);
+      toast.error("Failed to load dashboard data");
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDashboard();
+    const interval = setInterval(loadDashboard, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (loading || !data) {
+    return (
+      < DashboardSkeleton />
+    );
+  }
+
+  const stats = [
+    {
+      title: "Total Fetched Articles",
+      value: data.stats.totalFetched,
+      icon: TrendingUp,
+      gradient: "from-blue-500 to-blue-600",
+      bgGradient: "from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20",
+      color: "text-blue-600 dark:text-blue-400",
+    },
+    {
+      title: "AI Generated Posts",
+      value: data.stats.aiGeneratedCount,
+      icon: Zap,
+      gradient: "from-purple-500 to-pink-600",
+      bgGradient: "from-purple-50 to-pink-100 dark:from-purple-900/20 dark:to-pink-800/20",
+      color: "text-purple-600 dark:text-purple-400",
+    },
+    {
+      title: "Queue Status",
+      value: data.queue.running ? "Running" : "Idle",
+      icon: Activity,
+      gradient: "from-green-500 to-emerald-600",
+      bgGradient: "from-green-50 to-emerald-100 dark:from-green-900/20 dark:to-emerald-800/20",
+      color: "text-green-600 dark:text-green-400",
+    },
+  ];
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Total Fetched Articles</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-3xl font-bold">124</p>
-        </CardContent>
-      </Card>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Monitor your automation and system health
+        </p>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>AI Generated Posts</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-3xl font-bold">32</p>
-        </CardContent>
-      </Card>
+      {/* STATS CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {stats.map((stat, idx) => {
+          const Icon = stat.icon;
+          return (
+            <Card key={idx} className="overflow-hidden">
+              <div className={`h-1 bg-gradient-to-r ${stat.gradient}`}></div>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {stat.title}
+                  </CardTitle>
+                  <div className={`p-2 rounded-lg bg-gradient-to-br ${stat.bgGradient}`}>
+                    <Icon className={`w-4 h-4 ${stat.color}`} />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className={`text-3xl font-bold bg-gradient-to-r ${stat.gradient} bg-clip-text text-transparent`}>
+                  {stat.value}
+                </p>
+                <p className="text-xs text-muted-foreground mt-2">Live updated</p>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Queue Status</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-3xl font-bold">Running</p>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+        {/* RECENT ACTIVITY */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Recent Activity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {data.recentActivity.map((item, i) => (
+                <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-muted/40 border border-border/40">
+                  <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></div>
+                  <span className="text-sm text-muted-foreground">
+                    {item.title.slice(0, 60)}...
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
+        {/* SYSTEM HEALTH */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">System Health</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-5">
+              {/* Redis connection */}
+              <div>
+                <div className="flex justify-between mb-2">
+                  <span className="text-sm font-medium text-foreground">
+                    Redis Connection
+                  </span>
+                  <span className={`text-xs font-semibold ${
+                    data.system.redisConnected
+                      ? "text-green-600 dark:text-green-400"
+                      : "text-red-600 dark:text-red-400"
+                  }`}>
+                    {data.system.redisConnected ? "Connected" : "Disconnected"}
+                  </span>
+                </div>
+                <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div className={`h-full w-full ${data.system.redisConnected ? "bg-green-500" : "bg-red-500"}`}></div>
+                </div>
+              </div>
+
+              {/* Queue */}
+              <div>
+                <div className="flex justify-between mb-2">
+                  <span className="text-sm font-medium text-foreground">
+                    Queue Status
+                  </span>
+                  <span className={`text-xs font-semibold ${data.queue.running ? "text-blue-600 dark:text-blue-400" : "text-blue-600 dark:text-blue-400"}`}>
+                    {data.queue.running ? "Running" : "Idle"}
+                  </span>
+                </div>
+                <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div className={`h-full ${data.queue.running ? "w-full bg-blue-500" : "w-1/4 bg-blue-500"}`}></div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

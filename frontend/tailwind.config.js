@@ -1,9 +1,6 @@
 export default {
-    darkMode: ["class"],
-    content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
+  darkMode: "class",
+  content: ["./index.html", "./src/**/*.{js,jsx}"],
   theme: {
   	extend: {
   		borderRadius: {
@@ -55,5 +52,6 @@ export default {
   		}
   	}
   },
+  // eslint-disable-next-line no-undef
   plugins: [require("tailwindcss-animate")],
 }

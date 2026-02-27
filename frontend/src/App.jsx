@@ -2,19 +2,27 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./components/layout/Layout.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Fetcher from "./pages/Fetcher.jsx";
-import FetcherList from "./pages/FetcherList";
+import FetcherList from "./pages/FetcherList.jsx";
+import AIPosts from "./pages/AIPosts.jsx";
+import { Toaster } from "sonner";
 
 function App() {
   return (
-    <BrowserRouter>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/fetcher" element={<Fetcher />} />
-          <Route path="/records" element={<FetcherList />} />
-        </Routes>
-      </Layout>
-    </BrowserRouter>
+    <>
+      <Toaster richColors position="top-right" />
+
+      <BrowserRouter>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/fetcher" element={<Fetcher />} />
+            <Route path="/records" element={<FetcherList />} />
+            <Route path="/posts" element={<AIPosts />} />
+            <Route path="*" element={<Dashboard />} />
+          </Routes>
+        </Layout>
+      </BrowserRouter>
+    </>
   );
 }
 

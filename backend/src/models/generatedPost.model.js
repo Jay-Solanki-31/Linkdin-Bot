@@ -1,4 +1,3 @@
-// src/models/generatedPost.model.js
 import mongoose from "mongoose";
 
 const GeneratedPostSchema = new mongoose.Schema({
@@ -6,17 +5,51 @@ const GeneratedPostSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "FetchedContent",
     required: true,
-    index: true
   },
+
   title: { type: String, default: "" },
-  text: { type: String, required: true },
+  text: { type: String },
   url: { type: String },
   source: { type: String },
   status: {
     type: String,
-    enum: ["pending", "draft", "completed", "failed"],
+    enum: ["draft", "generating", "queued", "publishing", "posted", "failed"],
     default: "draft",
+    index: true
   },
+  slot: String,
+  linkedinPostUrn: String,
+  postedAt: Date,
+  error: String,
+  attempts: { type: Number, default: 0 },
+  lastAttemptAt: Date,
+  publishAt: Date,
+  expiresAt: {
+  type: Date
+  }
+
 }, { timestamps: true });
 
+GeneratedPostSchema.index({ articleId: 1 }, { unique: true });
+
+GeneratedPostSchema.index(
+  { linkedinPostUrn: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      linkedinPostUrn: { $type: "string" }
+    }
+  }
+);
+
+GeneratedPostSchema.index(
+  { expiresAt: 1 },
+  { expireAfterSeconds: 0 }
+);
+
+GeneratedPostSchema.index({ slot: 1, status: 1 });
+GeneratedPostSchema.index({ publishAt: 1 });
+
+
 export default mongoose.model("GeneratedPost", GeneratedPostSchema);
+

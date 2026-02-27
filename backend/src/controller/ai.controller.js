@@ -1,12 +1,30 @@
-//  src/controller/ ai.controller.js
+import GeneratedPost from "../models/generatedPost.model.js";
+import { addAIJob } from "../queue/ai.queue.js";
 
-import aiService from "../modules/ai/ai.service.js";
+export const generateAIManually = async (req, res) => {
+  const { postId } = req.params;
 
-export async function generatePosts(req, res) {
-  try {
-    const result = await aiService.generateAll();
-    res.json({ success: true, ...result });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+  if (!postId) {
+    return res.status(400).json({
+      success: false,
+      error: "postId is required",
+    });
   }
-}
+
+  const post = await GeneratedPost.findById(postId);
+  if (!post) {
+    return res.status(404).json({
+      success: false,
+      error: "Post not found",
+    });
+  }
+
+  const job = await addAIJob(postId);
+
+  return res.json({
+    success: true,
+    message: "AI generation job queued",
+    jobId: job.id,
+    postId,
+  });
+};
