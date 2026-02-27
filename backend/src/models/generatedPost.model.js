@@ -23,7 +23,10 @@ const GeneratedPostSchema = new mongoose.Schema({
   error: String,
   attempts: { type: Number, default: 0 },
   lastAttemptAt: Date,
-  publishAt: Date
+  publishAt: Date,
+  expiresAt: {
+  type: Date
+  }
 
 }, { timestamps: true });
 
@@ -37,6 +40,11 @@ GeneratedPostSchema.index(
       linkedinPostUrn: { $type: "string" }
     }
   }
+);
+
+GeneratedPostSchema.index(
+  { expiresAt: 1 },
+  { expireAfterSeconds: 0 }
 );
 
 GeneratedPostSchema.index({ slot: 1, status: 1 });

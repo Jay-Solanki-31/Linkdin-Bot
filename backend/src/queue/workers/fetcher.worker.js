@@ -8,13 +8,14 @@ import FetchedContent from "../../models/fetchedContent.model.js";
 
 import logger from "../../utils/logger.js";
 
-
 export default new Worker(
   "fetcher-queue",
   async (job) => {
     try {
       const { source, keyword } = job.data;
-      logger.info(`Fetcher job started for source: ${source}, keyword: ${keyword}`);
+      logger.info(
+        `Fetcher job started for source: ${source}, keyword: ${keyword}`,
+      );
 
       const rawItems = await FetcherService.fetchFromSource(source, keyword);
       logger.debug(`Fetched ${rawItems.length} items from ${source}`);
@@ -25,10 +26,13 @@ export default new Worker(
           {
             $set: {
               ...item,
-              source
-            }
+              source,
+            },
+            $setOnInsert: {
+              expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+            },
           },
-          { upsert: true }
+          { upsert: true },
         );
       }
 
@@ -41,5 +45,5 @@ export default new Worker(
       throw error;
     }
   },
-  { connection: redisConnection.connection }
+  { connection: redisConnection.connection },
 );
