@@ -1,0 +1,81 @@
+// PORT=5000
+// MONGO_URI= // mongo db url;
+// REDIS_HOST=//127.0.0.1
+// REDIS_PORT=//6379
+// REDIS_PASSWORD=
+// GEMINI_API_KEY= // gemini api ket
+// // ADMIN_KEY =  Add admin key  for a bullmq
+// LINKEDIN_CLIENT_ID= // your linkedin client id to  that  use by linkdin
+// LINKEDIN_CLIENT_SECRET=// your linkedin client id secrte
+// LINKEDIN_REDIRECT_URI=// http://localhost:5000/auth/linkedin/callback backend port that redierct the url
+
+
+
+; STEP 1 — Create LinkedIn Company Page
+
+
+; 1️⃣ Login LinkedIn
+; 2️⃣ Go to Create Company Page
+; 3️⃣ Choose Small Business
+; 4️⃣ Fill safely:
+
+; Company Name →  AI Tools (or anything clean)
+
+; Size → 1–10
+
+; Industry → Software
+
+; Website → can be GitHub for now
+; 5️⃣ Create
+; 6️⃣ Don’t invite followers
+; 7️⃣ Don’t post anything
+; 8️⃣ Done ✔
+
+; This keeps it clean + safe.
+
+; STEP 2 — Create LinkedIn Developer App
+
+; From your original LinkedIn account
+
+; 👉 Go to:
+; https://www.linkedin.com/developers/
+
+; 1️⃣ Click Create App
+; 2️⃣ Fill:
+
+; App Name → LinkedIn AI Bot
+
+; Company → Select your Company Page
+
+; App logo → required (use any PNG)
+
+; Privacy Policy URL → GitHub README works
+
+; Create app ✔
+
+; STEP 3 — Enable Correct Products
+
+; Go to your app → Products Tab
+
+; Enable:
+; ✔ Sign In with LinkedIn
+; ✔ Share on LinkedIn
+
+; If Share on LinkedIn says “Review required” → apply → but many accounts get it auto-enabled.
+
+; STEP 4 — Configure OAuth (VERY IMPORTANT)
+
+; Go to:
+; 👉 Auth Tab
+
+; You will see:
+
+; Client ID
+
+; Client Secret → copy
+
+; Scroll to:
+; OAuth 2.0 Redirect URLs
+; Add:
+
+; http://localhost:5000/auth/callback or backend url
