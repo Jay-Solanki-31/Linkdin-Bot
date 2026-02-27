@@ -1,9 +1,9 @@
 import dotenv from "dotenv";
-import logger from "./src/utils/logger.js";
-import { connectDB } from "./src/config/db.js";
+import logger from "./utils/logger.js";
+import { connectDB } from "./config/db.js";
 
-import { startFetchScheduler } from "./src/modules/scheduler/fetchScheduler.js";
-import { startSlotAllocatorScheduler } from "./src/modules/scheduler/slotAllocator.scheduler.js";
+import { startFetchScheduler } from "./modules/scheduler/fetchScheduler.js";
+import { startSlotAllocatorScheduler } from "./modules/scheduler/slotAllocator.scheduler.js";
 
 dotenv.config();
 
