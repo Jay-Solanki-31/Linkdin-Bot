@@ -28,6 +28,7 @@ import { startSlotAllocatorScheduler } from "./modules/scheduler/slotAllocator.s
 dotenv.config();
 
 const app = express();
+app.set("trust proxy", 1);
 
 app.use(express.json());
 app.use(
@@ -36,15 +37,17 @@ app.use(
     credentials: true,
   })
 );
-
 app.use(
   session({
+    name: "linkedin-bot-session",
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
+    proxy: true, 
     cookie: {
-      secure: true, // production
-      sameSite: "none",
+      httpOnly: true,
+      secure: true,     
+      sameSite: "none", 
     },
   })
 );
