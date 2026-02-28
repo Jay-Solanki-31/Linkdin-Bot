@@ -6,10 +6,13 @@ export default function LinkedInStatus() {
   const [loading, setLoading] = useState(true);
 
   const loadStatus = async () => {
-    setLoading(true);
-    const data = await getLinkedInStatus();
-    setAuth(data);
-    setLoading(false);
+    try {
+      setLoading(true);
+      const data = await getLinkedInStatus();
+      setAuth(data);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -17,15 +20,21 @@ export default function LinkedInStatus() {
   }, []);
 
   const connectLinkedIn = () => {
+    const backendUrl = import.meta.env.VITE_API_URL;
+
     const popup = window.open(
-      "/api/auth/linkedin/login",
+      `${backendUrl}/api/auth/linkedin/login`,
       "linkedin-login",
       "width=650,height=700"
     );
 
     const listener = (event) => {
       if (event.data?.source !== "linkedin-auth") return;
-      if (event.data.status === "success") loadStatus();
+
+      if (event.data.status === "success") {
+        loadStatus();
+      }
+
       window.removeEventListener("message", listener);
       popup?.close();
     };
