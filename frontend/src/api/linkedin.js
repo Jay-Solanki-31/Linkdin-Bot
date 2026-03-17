@@ -1,4 +1,6 @@
+import api from "./index.js";
+
 export async function getLinkedInStatus() {
-  const res = await fetch("api/auth/linkedin/status");
-  return res.json();
+  const { data } = await api.get("/api/auth/linkedin/status");
+  return data;
 }
