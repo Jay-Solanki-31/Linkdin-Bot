@@ -1,7 +1,9 @@
 import { Worker } from "bullmq";
 import { redisConnection } from "../connection.js";
 import dayjs from "dayjs";
-import weekOfYear from "dayjs/plugin/weekOfYear.js";
+import utc from "dayjs/plugin/utc.js";
+import timezone from "dayjs/plugin/timezone.js";
+import isoWeek from "dayjs/plugin/isoWeek.js";
 
 import FetchedContent from "../../models/fetchedContent.model.js";
 import GeneratedPost from "../../models/generatedPost.model.js";
@@ -11,8 +13,9 @@ import { JOB_TYPES } from "../jobTypes.js";
 
 import logger from "../../utils/logger.js";
 
-dayjs.extend(weekOfYear);
-
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.extend(isoWeek);
 
 /*
   Tuesday, Wednesday, Thursday
@@ -27,25 +30,28 @@ const SLOT_TIMES = [
   { day: 4, hour: 18 },
 ];
 
-function generateFutureSlots(now) {
+function generateFutureSlots(nowIST) {
   const slots = SLOT_TIMES.map(({ day, hour }) => {
-    let slot = now
-      .startOf("week")
+    let slot = nowIST
+      .startOf("isoWeek") // Monday-based week
       .add(day, "day")
       .hour(hour)
       .minute(0)
       .second(0)
       .millisecond(0);
 
-    // If already passed → move to next week
-    if (slot.isBefore(now)) {
+    // move to next week if already passed
+    if (slot.isBefore(nowIST)) {
       slot = slot.add(1, "week");
     }
 
-    return slot.toDate();
+    logger.info(
+      `Slot IST: ${slot.format()} | UTC: ${slot.utc().format()}`
+    );
+
+    return slot.utc().toDate(); // store in UTC
   });
 
-  //  sort chronologically
   return slots.sort((a, b) => a.getTime() - b.getTime());
 }
 
@@ -53,43 +59,52 @@ export default new Worker(
   "slot-allocator-queue",
   async () => {
     try {
-      const now = dayjs();
-      const weekKey = `${now.year()}-W${String(now.week()).padStart(2, "0")}`;
+      const nowIST = dayjs().tz("Asia/Kolkata");
+
+      logger.info(
+        `NOW IST: ${nowIST.format()} | NOW UTC: ${nowIST.utc().format()}`
+      );
+
+      const weekKey = `${nowIST.year()}-W${String(
+        nowIST.isoWeek()
+      ).padStart(2, "0")}`;
 
       logger.info(`[SlotAllocator] Allocating for ${weekKey}`);
 
-      const allSlots = generateFutureSlots(now);
+      const allSlots = generateFutureSlots(nowIST);
 
       const existingPosts = await GeneratedPost.find({
-        publishAt: { $in: allSlots },
+        publishAt: {
+          $gte: allSlots[0],
+          $lte: allSlots[allSlots.length - 1],
+        },
       }).select("publishAt articleId");
 
-      const usedSlotTimes = existingPosts.map(p =>
-        new Date(p.publishAt).getTime()
+      const usedSlotTimes = new Set(
+        existingPosts.map((p) =>
+          new Date(p.publishAt).getTime()
+        )
       );
 
       const freeSlots = allSlots.filter(
-        slot => !usedSlotTimes.includes(slot.getTime())
+        (slot) => !usedSlotTimes.has(slot.getTime())
       );
 
       logger.info(`Free slots: ${freeSlots.length}`);
 
       if (!freeSlots.length) return;
 
-      const usedArticleIds = existingPosts.map(p => p.articleId);
+      const usedArticleIds = existingPosts.map((p) => p.articleId);
 
       const contents = await FetchedContent.find({
         _id: { $nin: usedArticleIds },
-      })
-        .sort({ createdAt: 1 });
+      }).sort({ createdAt: 1 });
 
       if (!contents.length) {
         logger.info("No new content available");
         return;
       }
 
-    
-      // Only allocate as many as we have content for
       const allocationCount = Math.min(
         freeSlots.length,
         contents.length
@@ -102,7 +117,7 @@ export default new Worker(
           const publishAt = freeSlots[i];
 
           logger.info(
-            `Assigning ${publishAt.toISOString()} → ${contents[i]._id}`
+            `Assigning UTC: ${publishAt.toISOString()} → ${contents[i]._id}`
           );
 
           const post = await GeneratedPost.create({

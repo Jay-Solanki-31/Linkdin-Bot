@@ -23,7 +23,7 @@
     "bullmq": "^5.65.1",
     "cheerio": "^1.1.2",
     "cors": "^2.8.5",
-    "dayjs": "^1.11.19",
+    "dayjs": "^1.11.20",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "express-session": "^1.18.2",
