@@ -13,6 +13,8 @@ import { JOB_TYPES } from "../jobTypes.js";
 
 import logger from "../../utils/logger.js";
 
+import { jobDurationHistogram, jobProcessedCounter, jobFailedCounter } from '../../utils/metrics.js'
+
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.extend(isoWeek);
@@ -58,6 +60,7 @@ function generateFutureSlots(nowIST) {
 export default new Worker(
   "slot-allocator-queue",
   async () => {
+    const end = jobDurationHistogram.startTimer();
     try {
       const nowIST = dayjs().tz("Asia/Kolkata");
 
@@ -96,10 +99,46 @@ export default new Worker(
 
       const usedArticleIds = existingPosts.map((p) => p.articleId);
 
-      const contents = await FetchedContent.find({
+      
+      const sources = await FetchedContent.distinct("source", {
         _id: { $nin: usedArticleIds },
-      }).sort({ createdAt: 1 });
+      });
 
+      let contents = [];
+
+      for (const source of sources) {
+        const items = await FetchedContent.aggregate([
+          {
+            $match: {
+              source,
+              _id: { $nin: usedArticleIds },
+            },
+          },
+          { $sample: { size: 1 } },
+        ]);
+
+        if (items.length) {
+          contents.push(items[0]);
+        }
+      }
+
+      if (contents.length < freeSlots.length) {
+        const remaining = await FetchedContent.aggregate([
+          {
+            $match: {
+              _id: {
+                $nin: [
+                  ...usedArticleIds,
+                  ...contents.map((c) => c._id),
+                ],
+              },
+            },
+          },
+          { $sample: { size: freeSlots.length - contents.length } },
+        ]);
+
+        contents = [...contents, ...remaining];
+      } 
       if (!contents.length) {
         logger.info("No new content available");
         return;
@@ -140,8 +179,13 @@ export default new Worker(
       }
 
       logger.info(`[SlotAllocator] Allocation completed`);
+      jobProcessedCounter.inc({ type: "fetcher" });
     } catch (err) {
+      jobFailedCounter.inc({ type: "fetcher" });
       logger.error(`[SlotAllocator] Fatal error: ${err.message}`);
+      throw err;
+    } finally {
+      end({ type: "soatAllocator" });
     }
   },
   {

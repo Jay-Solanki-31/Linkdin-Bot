@@ -4,9 +4,13 @@ import GeneratedPost from "../../models/generatedPost.model.js";
 import { publishToLinkedIn } from "../../modules/publisher/linkedin.publisher.js";
 import logger from "../../utils/logger.js";
 
+import {jobDurationHistogram,jobProcessedCounter,jobFailedCounter} from '../../utils/metrics.js';
+
 export default new Worker(
   "linkedin-queue",
   async (job) => {
+    const end = jobDurationHistogram.startTimer();
+   try {
     const { postId } = job.data;
     logger.info(`Processing LinkedIn job: ${postId}`);
 
@@ -28,7 +32,7 @@ export default new Worker(
       return;
     }
 
-    try {
+   
       logger.info(`Publishing post ${postId} to LinkedIn...`);
 
       const result = await publishToLinkedIn({
@@ -56,7 +60,9 @@ export default new Worker(
       });
 
       logger.info(`Post successfully published: ${postId} → ${urn}`);
+      jobProcessedCounter.inc({ type : "linkedin"});
     } catch (err) {
+      jobFailedCounter.inc({ type : "linkedin"});
       logger.error(`Publishing failed for ${postId}: ${err.message}`);
 
       await GeneratedPost.findByIdAndUpdate(postId, {
@@ -68,6 +74,8 @@ export default new Worker(
       });
 
       throw err;
+    } finally{
+      end({ type: "linkedin" });
     }
   },
   {

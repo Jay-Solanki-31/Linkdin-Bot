@@ -4,46 +4,99 @@ import { redisConnection } from "../connection.js";
 import FetcherService from "../../modules/fetchers/fetcher.service.js";
 import FetchedContent from "../../models/fetchedContent.model.js";
 
-// import { enqueueSlotAllocation } from "../slotAllocator.queue.js";
-
 import logger from "../../utils/logger.js";
+import {
+  jobProcessedCounter,
+  jobFailedCounter,
+  jobDurationHistogram,
+} from "../../utils/metrics.js";
+
+function normalizeUrl(url) {
+  try {
+    const u = new URL(url);
+    u.search = "";
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
 
 export default new Worker(
   "fetcher-queue",
   async (job) => {
+    const end = jobDurationHistogram.startTimer();
+
     try {
       const { source, keyword } = job.data;
+
       logger.info(
-        `Fetcher job started for source: ${source}, keyword: ${keyword}`,
+        `Fetcher job started for source: ${source}, keyword: ${keyword}`
       );
 
       const rawItems = await FetcherService.fetchFromSource(source, keyword);
-      logger.debug(`Fetched ${rawItems.length} items from ${source}`);
 
-      for (const item of rawItems) {
-        await FetchedContent.updateOne(
-          { url: item.url },
-          {
-            $set: {
-              ...item,
-              source,
-            },
-            $setOnInsert: {
-              expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-            },
-          },
-          { upsert: true },
-        );
+      logger.info(`Fetched ${rawItems.length} items from ${source}`);
+
+      if (!rawItems.length) {
+        logger.warn(`No items fetched from ${source}`);
+        return;
       }
 
-      logger.info(`Fetcher received ${rawItems.length} items from ${source}`);
-      // if Event-based Slot-allocated use this otherWise Corn based is work
-      // await enqueueSlotAllocation();
-      // logger.info(`Slot allocation enqueued successfully`);
+     
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+      const operations = rawItems.map((item) => {
+        const normalizedUrl = normalizeUrl(item.url);
+
+        return {
+          updateOne: {
+            filter: { url: normalizedUrl },
+            update: {
+              $set: {
+                ...item,
+                url: normalizedUrl,
+                source,
+                expiresAt,
+              },
+              $setOnInsert: {
+                createdAt: now,
+              },
+            },
+            upsert: true,
+          },
+        };
+      });
+
+      const result = await FetchedContent.bulkWrite(operations, {
+        ordered: false, 
+      });
+
+      const inserted = result.upsertedCount || 0;
+      const modified = result.modifiedCount || 0;
+      const matched = result.matchedCount || 0;
+      const duplicates = rawItems.length - inserted;
+
+      logger.info(
+        `Fetcher ${source}: fetched=${rawItems.length}, inserted=${inserted}, updated=${modified}, matched=${matched}, duplicates=${duplicates}`
+      );
+
+      if (inserted === 0) {
+        logger.warn(`No new content from ${source}`);
+      }
+
+      jobProcessedCounter.inc({ type: "fetcher" });
     } catch (error) {
+      jobFailedCounter.inc({ type: "fetcher" });
+
       logger.error(`Fetcher job failed: ${error.message}`, error);
       throw error;
+    } finally {
+      jobDurationHistogram.observe({ type: "fetcher" }, end());
     }
   },
-  { connection: redisConnection.connection },
+  {
+    connection: redisConnection.connection,
+    concurrency: 5, 
+  }
 );

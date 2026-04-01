@@ -10,61 +10,83 @@ import { JOB_TYPES } from "../jobTypes.js";
 
 import logger from "../../utils/logger.js";
 
+import { jobDurationHistogram, jobFailedCounter, jobProcessedCounter } from "../../utils/metrics.js"
+
 
 export default new Worker(
   "ai-processing-queue",
   async (job) => {
-    const { postId } = job.data;
-    logger.info(`Processing AI job for postId: ${postId}`);
+    const end = jobDurationHistogram.startTimer();
 
-    const post = await GeneratedPost.findOneAndUpdate(
-      {
-        _id: postId,
-        status: { $in: ["draft"] },
-      },
-      { $set: { status: "generating" } },
-      { returnDocument: 'after' }
-    );
+    try {
+      const { postId } = job.data;
+      logger.info(`Processing AI job for postId: ${postId}`);
 
-    if (!post) {
-      logger.warn(`Post not eligible for AI generation: ${postId}`);
-      return;
-    }
+      const post = await GeneratedPost.findOneAndUpdate(
+        {
+          _id: postId,
+          status: { $in: ["draft"] },
+        },
+        { $set: { status: "generating" } },
+        { returnDocument: "after" }
+      );
 
-    const content = await FetchedContent.findById(post.articleId);
-    if (!content) {
-      logger.error(`Content not found for articleId: ${post.articleId}`);
-      throw new Error("Content not found");
-    }
-
-    const text = await aiService.generateForContent(content);
-    logger.info(`Generated text for postId: ${postId}`);
-
-    post.status = "queued";
-    post.text = text;
-    post.title = content.title;
-    post.url = content.url; 
-
-    await post.save();
-
-    const delay = Math.max(
-      new Date(post.publishAt).getTime() - Date.now(),
-      0
-    );
-
-    await linkedinQueue.add(
-      JOB_TYPES.POST_TO_LINKEDIN,
-      { postId },
-      {
-        jobId: `linkedin-${postId}`,
-        delay,
+      if (!post) {
+        logger.warn(`Post not eligible for AI generation: ${postId}`);
+        return;
       }
-    );
 
-    logger.info(
-      `AI job completed for ${postId} with delay: ${delay}ms`
-    );
+      const content = await FetchedContent.findById(post.articleId);
+      if (!content) {
+        logger.error(`Content not found for articleId: ${post.articleId}`);
+        throw new Error("Content not found");
+      }
+
+      const text = await aiService.generateForContent(content);
+      logger.info(`Generated text for postId: ${postId}`);
+
+      post.status = "queued";
+      post.text = text;
+      post.title = content.title;
+      post.url = content.url;
+
+      await post.save();
+
+      const delay = Math.max(
+        new Date(post.publishAt).getTime() - Date.now(),
+        0
+      );
+
+      await linkedinQueue.add(
+        JOB_TYPES.POST_TO_LINKEDIN,
+        { postId },
+        {
+          jobId: `linkedin-${postId}`,
+          delay,
+        }
+      );
+
+      logger.info(
+        `AI job completed for ${postId} with delay: ${delay}ms`
+      );
+
+      // ✅ SUCCESS METRIC
+      jobProcessedCounter.inc({ type : "ai"});
+
+    } catch (err) {
+      // ❌ FAILURE METRIC
+      jobFailedCounter.inc({ type : "ai"});
+
+      logger.error(`AI job failed: ${err.message}`);
+      throw err; // IMPORTANT → BullMQ needs this
+
+    } finally {
+      // ⏱️ DURATION METRIC
+   end({ type: "ai" });
+    }
   },
-  { connection: redisConnection.connection }
+  {
+    connection:redisConnection.connection,
+  }
 );
 

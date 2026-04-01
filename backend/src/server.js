@@ -20,6 +20,9 @@ import testRoutes from "./routes/test.routes.js";
 
 import bullBoard from "./dashboard/bullboard.js";
 import dashboardAuth from "./middleware/bullmq.middleware.js";
+import {register} from "./utils/metrics.js";
+import { collectQueueMetrics } from "./utils/queueMetrics.js";
+
 
 // Scheduler
 import { startFetchScheduler } from "./modules/scheduler/fetchScheduler.js";
@@ -56,6 +59,18 @@ app.get("/", (req, res) => {
   res.json({ message: "LinkedIn Bot Server Running" });
 });
 
+
+app.get("/metrics", async (req, res) => {
+  res.set("Content-Type", register.contentType);
+  res.end(await register.metrics());
+});
+
+
+// collect every 5 seconds
+setInterval(() => {
+  collectQueueMetrics().catch(console.error);
+}, 5000);
+
 // Swagger
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
@@ -70,7 +85,7 @@ app.use("/admin/queues", dashboardAuth, bullBoard.getRouter());
 app.use("/api/slot-allocator", slotAllocatorRoutes);
 app.use("/test", testRoutes);
 
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 5000;
 
 async function start() {
   try {
@@ -91,8 +106,8 @@ async function start() {
 
     logger.info("Schedulers started");
 
-    app.listen(PORT, () => {
-      logger.info(`Server running on port ${PORT}`);
+    app.listen(5000, "0.0.0.0", () => {
+      logger.info("Server running on port 5000");
     });
 
   } catch (err) {
