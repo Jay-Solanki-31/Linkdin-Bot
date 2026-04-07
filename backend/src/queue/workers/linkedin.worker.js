@@ -7,28 +7,29 @@ import logger from "../../utils/logger.js";
 export default new Worker(
   "linkedin-queue",
   async (job) => {
-    const { postId } = job.data;
-    logger.info(`Processing LinkedIn job: ${postId}`);
-
-    const post = await GeneratedPost.findOneAndUpdate(
-      {
-        _id: postId,
-        status: { $nin: ["posted", "publishing"] },
-        linkedinPostUrn: { $exists: false },
-        publishAt: { $lte: new Date() },
-      },
-      { $set: { status: "publishing" } },
-      { returnDocument: "after" },
-    );
-
-    if (!post) {
-      logger.info(
-        `Post ${postId} not eligible for publishing (either scheduled for future or already processed).`,
-      );
-      return;
-    }
-
     try {
+      const { postId } = job.data;
+      logger.info(`Processing LinkedIn job: ${postId}`);
+
+      const post = await GeneratedPost.findOneAndUpdate(
+        {
+          _id: postId,
+          status: { $nin: ["posted", "publishing"] },
+          linkedinPostUrn: { $exists: false },
+          publishAt: { $lte: new Date() },
+        },
+        { $set: { status: "publishing" } },
+        { returnDocument: "after" },
+      );
+
+      if (!post) {
+        logger.info(
+          `Post ${postId} not eligible for publishing (either scheduled for future or already processed).`,
+        );
+        return;
+      }
+
+
       logger.info(`Publishing post ${postId} to LinkedIn...`);
 
       const result = await publishToLinkedIn({

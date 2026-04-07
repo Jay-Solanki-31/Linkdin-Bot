@@ -70,7 +70,7 @@ app.use("/admin/queues", dashboardAuth, bullBoard.getRouter());
 app.use("/api/slot-allocator", slotAllocatorRoutes);
 app.use("/test", testRoutes);
 
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 5000;
 
 async function start() {
   try {
