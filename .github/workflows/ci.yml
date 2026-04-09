@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      # Backend
+      - name: Install backend
+        run : |
+         cd backend
+         npm install
+
+      - name: Check backend build
+        run : |
+          cd backend
+          node -e "console.log('backend ok')"
+
+      # Frontend 
+      - name: Install frontend
+        run: |
+          cd frontend 
+          npm install
+
+      - name: Build frontend 
+        run: |
+          cd frontend
+          npm run build
+         
