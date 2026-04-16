@@ -8,7 +8,7 @@ import { redisConnection } from "../queue/connection.js";
 
 const router = express.Router();
 
-/*  Queue Events  */
+router.get("/ping", (req, res) => res.send("pong"));
 
 const fetcherEvents = new QueueEvents("fetcher-queue", {
   connection: redisConnection.connection,
@@ -20,9 +20,17 @@ fetcherEvents.on("completed", () => {
   NEXT_RUN = new Date(Date.now() + 5 * 60 * 1000);
 });
 
-/*  Route  */
+let cachedDashboard = null;
+let lastCacheTime = 0;
+const CACHE_DURATION = 60 * 1000; 
 
 router.get("/", async (req, res) => {
+  const now = Date.now();
+
+  if (cachedDashboard && (now - lastCacheTime < CACHE_DURATION)) {
+    return res.json(cachedDashboard);
+  }
+
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -34,7 +42,6 @@ router.get("/", async (req, res) => {
       todayFetched,
       aiGeneratedCount,
       recent,
-      redisStatus,
     ] = await Promise.all([
       fetcherQueue.getJobCounts(),
       aiQueue.getJobCounts(),
@@ -45,19 +52,10 @@ router.get("/", async (req, res) => {
         .sort({ createdAt: -1 })
         .limit(5)
         .select("title source createdAt"),
-      redisConnection.connection.ping().then(
-        () => true,
-        () => false
-      ),
     ]);
 
-    res.json({
-      stats: {
-        totalFetched,
-        todayFetched,
-        aiGeneratedCount,
-      },
-
+    const responseData = {
+      stats: { totalFetched, todayFetched, aiGeneratedCount },
       queue: [
         {
           name: "Fetcher Queue",
@@ -78,19 +76,21 @@ router.get("/", async (req, res) => {
       ],
 
       system: {
-        redisConnected: redisStatus,
+        redisConnected: true, 
         lastRun: new Date().toISOString(),
         nextRun: NEXT_RUN,
       },
 
       recentActivity: recent,
-    });
+    };
+
+    cachedDashboard = responseData;
+    lastCacheTime = now;
+
+    res.json(responseData);
   } catch (err) {
     console.error("Dashboard error:", err);
-    res.status(500).json({
-      message: "Dashboard error",
-      error: err.message,
-    });
+    res.status(500).json({ message: "Dashboard error", error: err.message });
   }
 });
 

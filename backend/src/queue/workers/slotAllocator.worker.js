@@ -165,7 +165,15 @@ export default new Worker(
           await aiQueue.add(
             JOB_TYPES.GENERATE_POST,
             { postId: post._id },
-            { jobId: `ai-${post._id}` }
+            { 
+              jobId: `ai-${post._id}`,
+              delay: i * 20000, 
+              attempts: 3,
+              backoff: {
+                type: 'exponential',
+                delay: 60000 
+              }
+            }
           );
 
         } catch (err) {
@@ -176,8 +184,8 @@ export default new Worker(
       }
 
       logger.info(`[SlotAllocator] Allocation completed`);
-    } catch (err) {
-      logger.error(`[SlotAllocator] Fatal error: ${err.message}`);
+    } catch (error) {
+      logger.error(`[SlotAllocator] Error: ${error.message}`);
     }
   },
   {

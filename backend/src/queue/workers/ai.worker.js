@@ -17,26 +17,27 @@ export default new Worker(
     const { postId } = job.data;
     logger.info(`Processing AI job for postId: ${postId}`);
 
-      const post = await GeneratedPost.findOneAndUpdate(
-        {
-          _id: postId,
-          status: { $in: ["draft"] },
-        },
-        { $set: { status: "generating" } },
-        { returnDocument: "after" }
-      );
+    const post = await GeneratedPost.findOneAndUpdate(
+      {
+        _id: postId,
+        status: { $in: ["draft", "generating", "failed"] }, 
+      },
+      { $set: { status: "generating" } },
+      { returnDocument: "after" }
+    );
 
-      if (!post) {
-        logger.warn(`Post not eligible for AI generation: ${postId}`);
-        return;
-      }
+    if (!post) {
+      logger.warn(`Post not eligible for AI generation: ${postId}`);
+      return;
+    }
 
-      const content = await FetchedContent.findById(post.articleId);
-      if (!content) {
-        logger.error(`Content not found for articleId: ${post.articleId}`);
-        throw new Error("Content not found");
-      }
+    const content = await FetchedContent.findById(post.articleId);
+    if (!content) {
+      logger.error(`Content not found for articleId: ${post.articleId}`);
+      throw new Error("Content not found");
+    }
 
+    try {
       const text = await aiService.generateForContent(content);
       logger.info(`Generated text for postId: ${postId}`);
 
@@ -61,13 +62,18 @@ export default new Worker(
         }
       );
 
-      logger.info(
-        `AI job completed for ${postId} with delay: ${delay}ms`
-      );
+      logger.info(`AI job completed for ${postId} with delay: ${delay}ms`);
 
-    } ,
+    } catch (err) {
+      await GeneratedPost.findByIdAndUpdate(postId, { status: "draft" });
+    
+      logger.error(`Gemini Error for ${postId}: ${err.message}`);
+       throw err; 
+    }
+  },
   {
-    connection:redisConnection.connection,
+    connection: redisConnection.connection,
+    concurrency: 1 
   }
 );
 
