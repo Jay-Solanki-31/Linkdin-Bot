@@ -7,8 +7,8 @@ export const slotAllocatorQueue = new Queue("slot-allocator-queue", {
   defaultJobOptions: {
     attempts: 3,
     backoff: { type: "exponential", delay: 5000 },
-    removeOnComplete: { age: 3600 },
-    removeOnFail: false,
+    removeOnComplete: true, 
+    removeOnFail: {count:10},
   },
 });
 

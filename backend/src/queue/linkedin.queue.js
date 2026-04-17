@@ -3,7 +3,16 @@ import { redisConnection } from "./connection.js";
 import { JOB_TYPES } from "./jobTypes.js";
 
 export const linkedinQueue = new Queue("linkedin-queue", {
-  connection: redisConnection.connection
+  connection: redisConnection.connection,
+  defaultJobOptions: {
+    removeOnComplete: true,
+    removeOnFail: { count: 10 },
+    attempts: 3,
+    backoff: {
+      type: "exponential",
+      delay: 30000,
+    },
+  }
 });
 
 export async function enqueueLinkedInPost(postId) {
@@ -21,8 +30,8 @@ export async function enqueueLinkedInPost(postId) {
         type: "exponential",
         delay: 30000,
       },
-      removeOnComplete: true,
-      removeOnFail: false,
+    removeOnComplete: true, 
+    removeOnFail: {count:10},
     }
   );
 }

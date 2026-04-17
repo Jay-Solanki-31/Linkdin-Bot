@@ -88,5 +88,7 @@ export default new Worker(
   {
     connection: redisConnection.connection,
     concurrency: 5, 
+    lockDuration:60000,
+    stalledInterval:300000
   }
 );
