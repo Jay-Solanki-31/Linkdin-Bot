@@ -7,8 +7,8 @@ export const aiQueue = new Queue("ai-processing-queue", {
   defaultJobOptions: {
     attempts: 5,
     backoff: { type: "exponential", delay: 30000 },
-    removeOnComplete: { age: 3600, count: 50 },
-    removeOnFail: false,
+    removeOnComplete: true,
+    removeOnFail: {count:10},
   },
 });
 export const addAIJob = async (postId) => {

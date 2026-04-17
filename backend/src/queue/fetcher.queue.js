@@ -6,7 +6,7 @@ export const fetcherQueue = new Queue("fetcher-queue", {
   defaultJobOptions: {
     attempts: 2,
     backoff: { type: "fixed", delay: 3000 },
-    removeOnComplete: {age:3600 ,count:50}, 
-    removeOnFail: false,
+    removeOnComplete: true, 
+    removeOnFail: {count:10},
   },
 });
