@@ -1,451 +1,602 @@
-# LinkedIn Bot - Automated Content Curation & AI-Powered Post Generation
+# LinkedIn Bot
 
-A full-stack automation platform that fetches content from multiple sources, generates AI-powered LinkedIn posts, and publishes them automatically. Built with Node.js, React, BullMQ for job queuing, and Google Generative AI (Gemini).
+AI-powered LinkedIn content automation platform built with Node.js, BullMQ, Redis, MongoDB, React, and Google Gemini.
 
----
-
-## 📋 Table of Contents
-
-- [Overview](#overview)
-- [Core Features](#core-features)
-- [Architecture](#architecture)
-- [Technology Stack](#technology-stack)
-- [Project Structure](#project-structure)
-- [Core Workflows](#core-workflows)
-- [Setup & Installation](#setup--installation)
-- [Environment Configuration](#environment-configuration)
-- [Running the Application](#running-the-application)
-- [API Endpoints](#api-endpoints)
-- [Dashboard & Monitoring](#dashboard--monitoring)
-- [Database Models](#database-models)
+This project automates the complete workflow of discovering developer-focused content, generating AI-written LinkedIn posts, assigning publishing slots, and publishing content directly to LinkedIn using a scalable queue-based architecture.
 
 ---
 
-## 🎯 Overview
+# Overview
 
-LinkedIn Bot is an intelligent content automation system designed to:
+LinkedIn Bot is designed for developers, creators, technical writers, engineering teams, and SaaS founders who want to automate technical content distribution on LinkedIn.
 
-1. **Fetch** trending articles from 8+ content sources automatically
-2. **Normalize** and store fetched content in a MongoDB database
-3. **Generate** unique LinkedIn posts using Google Generative AI (Gemini)
-4. **Publish** posts directly to LinkedIn via the LinkedIn REST API
-5. **Monitor** all operations through a real-time web dashboard
+The platform continuously fetches trending content from multiple developer ecosystems, stores and normalizes the data, generates professional LinkedIn-ready posts using Gemini AI, and publishes them through LinkedIn APIs.
 
-The system operates on a scheduler-driven architecture with Redis-backed job queuing (BullMQ) to ensure scalable, reliable job processing.
+The system uses BullMQ workers and Redis-backed queues to ensure reliability, scalability, retry handling, and fault isolation.
 
 ---
 
-## ✨ Core Features
+# Core Features
 
-### Content Fetching
-- **8 Content Sources**: Dev.to, Medium, GitHub, NPM, Hashnode, Node Weekly, Reddit, Daily Dev
-- **RSS & Web Scraping**: Fetches articles using RSS parsers and web scraping (Cheerio)
-- **Smart Scheduling**: Automatically runs every 2 days at 11 AM (configurable)
-- **Duplicate Prevention**: Unique URL constraint prevents duplicate articles
-- **Source Normalization**: Standardizes content structure across all sources
+## Multi-Source Content Aggregation
 
-### AI-Powered Post Generation
-- **Google Gemini Integration**: Uses state-of-the-art AI for intelligent post creation
-- **Professional Tone**: Generates LinkedIn-appropriate posts with natural conversational style
-- **Smart Formatting**: 3-5 sentences, exactly 1 emoji, source attribution, and CTAs
-- **Batch Processing**: Queues AI generation for multiple articles with worker-based processing
-- **Error Handling**: Graceful fallback with error logging
+The system fetches content from multiple technical platforms:
 
-### LinkedIn Publishing
-- **Direct Integration**: Posts directly to LinkedIn via REST API
-- **OAuth Authentication**: Secure LinkedIn member authentication & token management
-- **Status Tracking**: Tracks post lifecycle (draft → queued → posted → success/failed)
-- **Error Logging**: Detailed error tracking for failed publishes
+- Dev.to
+- Medium
+- GitHub Trending
+- NPM
+- Hashnode
+- Reddit
+- Hacker News
+- Node Weekly
 
-### Real-Time Monitoring
-- **BullMQ Dashboard**: Built-in admin UI to monitor job queues
-- **React Dashboard**: Analytics showing fetched articles, AI posts, publishing stats
-- **Live Updates**: Auto-refreshing statistics (10-second intervals)
-- **Job Status Tracking**: View queued, processing, completed, and failed jobs
+### Fetching Capabilities
+
+- RSS feed parsing
+- HTML scraping with Cheerio
+- Content normalization
+- Duplicate prevention
+- Automatic scheduled fetching
+- Manual fetch triggers from dashboard
+- MongoDB persistence layer
 
 ---
 
-### Queue-Based Job Processing
+## AI-Powered LinkedIn Post Generation
 
-The system uses **BullMQ** (Redis-backed job queue) for reliable, scalable job processing:
+Google Gemini is used to transform articles into optimized LinkedIn posts.
 
-| Queue | Job Type | Trigger | Worker |
-|-------|----------|---------|--------|
-| **Fetcher Queue** | `FETCH_CONTENT` | Fetch Scheduler (every 2 days) or manual trigger | `fetcher.worker.js` |
-| **AI Queue** | `GENERATE_POST` | AI Scheduler (checks FetchedContent) | `ai.worker.js` |
-| **LinkedIn Queue** | `POST_TO_LINKEDIN` | LinkedIn Scheduler (checks GeneratedPosts) | `linkedin.worker.js` |
+### AI Features
 
----
-
-## 💻 Technology Stack
-
-### Backend
-- **Runtime**: Node.js (ESM modules)
-- **Framework**: Express.js (REST API)
-- **Database**: MongoDB + Mongoose (data persistence)
-- **Cache & Queuing**: Redis + BullMQ (job management)
-- **AI Integration**: Google Generative AI (Gemini API)
-- **Web Scraping**: Cheerio (HTML parsing), RSS Parser
-- **Task Scheduling**: node-cron (scheduled jobs)
-- **Authentication**: express-session (LinkedIn OAuth)
-- **Logging**: Winston (structured logging)
-
-### Frontend
-- **Framework**: React 19 with React Router
-- **Build Tool**: Vite
-- **Styling**: Tailwind CSS + shadcn/ui components
-- **HTTP Client**: Axios
-- **Notifications**: Sonner (toast notifications)
-- **Icons**: Lucide React, React Icons
-- **Theme**: next-themes (dark mode support)
-
-### Infrastructure
-- **Monitoring Dashboard**: BullBoard (job queue UI)
-- **Session Management**: express-session
-- **CORS**: Enabled for frontend-backend communication
+- Human-like professional writing style
+- LinkedIn-focused formatting
+- Call-to-action generation
+- Source attribution
+- Queue-driven AI processing
+- Draft generation workflow
+- Retry-safe workers
+- Publish-ready post preparation
 
 ---
 
+## Automated LinkedIn Publishing
 
+Integrated LinkedIn OAuth and publishing pipeline.
 
+### Publishing Features
 
-**Frontend Pages**:
-- **Dashboard**: Shows statistics (total fetched, AI posts, published count)
-- **Fetcher**: Manual trigger buttons for each source
-- **Records**: List of all fetched articles with details
-- **Posts**: List of AI-generated posts with status
-- **Queue Monitor**: BullBoard (job queue UI)
-
-**Data Flow**:
-1. Frontend calls `GET /api/dashboard`
-2. Backend queries MongoDB collections for stats
-3. Returns: `{ stats: { totalFetched, aiGeneratedCount, publishedCount, failedCount } }`
-4. Frontend auto-refreshes every 10 seconds
+- LinkedIn OAuth authentication
+- Automated publishing pipeline
+- Scheduled publishing support
+- Publishing status tracking
+- Retry handling
+- Error logging
+- Queue-based publishing workers
 
 ---
 
-## 🚀 Setup & Installation
+## Slot Allocation System
 
-### Prerequisites
-- **Node.js** 16+ and npm/yarn
-- **MongoDB** (local or Atlas)
-- **Redis** (local or cloud instance)
-- **Google Generative AI API Key** (Gemini)
-- **LinkedIn Developer Account** (for OAuth credentials)
+The platform includes a slot allocation scheduler that automatically assigns publishing slots for generated posts.
 
-### Step 1: Clone Repository
-```bash
-git clone <repository-url>
-cd Linkdin-Bot
+### Benefits
+
+- Prevents content flooding
+- Maintains consistent posting schedule
+- Supports automated publishing cadence
+- Organizes queued content efficiently
+
+---
+
+## Queue-Based Processing Architecture
+
+The system uses BullMQ workers for asynchronous and scalable background processing.
+
+| Queue | Responsibility | Worker |
+|---|---|---|
+| Fetch Queue | Fetch external content | `fetcher.worker.js` |
+| AI Queue | Generate LinkedIn posts | `ai.worker.js` |
+| Slot Queue | Assign publishing slots | `slotAllocator.worker.js` |
+| LinkedIn Queue | Publish posts to LinkedIn | `linkedin.worker.js` |
+
+### Architecture Benefits
+
+- Non-blocking job processing
+- Distributed worker support
+- Retry and failure handling
+- Persistent Redis-backed queues
+- Improved scalability
+- Fault isolation between services
+
+---
+
+# System Architecture
+
+```text
+┌────────────────────────────────────────────────────────────┐
+│                    CONTENT SOURCES                        │
+│ Dev.to • Medium • GitHub • Reddit • NPM • Hashnode       │
+└──────────────────────────┬─────────────────────────────────┘
+                           │
+                           ▼
+              ┌──────────────────────────┐
+              │ Fetch Scheduler (Cron)   │
+              └────────────┬─────────────┘
+                           ▼
+              ┌──────────────────────────┐
+              │ Fetch Queue (BullMQ)     │
+              └────────────┬─────────────┘
+                           ▼
+              ┌──────────────────────────┐
+              │ MongoDB - FetchedContent │
+              └────────────┬─────────────┘
+                           ▼
+              ┌──────────────────────────┐
+              │ Slot Allocation Scheduler│
+              └────────────┬─────────────┘
+                           ▼
+              ┌──────────────────────────┐
+              │ AI Queue (Gemini AI)     │
+              └────────────┬─────────────┘
+                           ▼
+              ┌──────────────────────────┐
+              │ MongoDB - GeneratedPosts │
+              └────────────┬─────────────┘
+                           ▼
+              ┌──────────────────────────┐
+              │ LinkedIn Scheduler       │
+              └────────────┬─────────────┘
+                           ▼
+              ┌──────────────────────────┐
+              │ LinkedIn Publish Queue   │
+              └──────────────────────────┘
 ```
 
-### Step 2: Install Backend Dependencies
+---
+
+# Tech Stack
+
+## Backend
+
+- Node.js
+- Express.js
+- MongoDB + Mongoose
+- Redis
+- BullMQ
+- Google Gemini API
+- Cheerio
+- RSS Parser
+- Winston Logger
+- node-cron
+- Swagger API Docs
+- LinkedIn REST API
+
+---
+
+## Frontend
+
+- React 19
+- React Router
+- Vite
+- Tailwind CSS
+- shadcn/ui
+- Axios
+- Sonner
+- Lucide React
+- next-themes
+
+---
+
+## Infrastructure & Monitoring
+
+- BullBoard Queue Dashboard
+- Redis Queue Monitoring
+- Structured Logging
+- Scheduler-based Automation
+- Session Authentication
+
+---
+
+# Project Structure
+
+```bash
+Linkedin-Bot/
+│
+├── backend/
+│   ├── logs/
+│   ├── src/
+│   │   ├── config/
+│   │   ├── controller/
+│   │   ├── dashboard/
+│   │   ├── middleware/
+│   │   ├── models/
+│   │   ├── modules/
+│   │   │   ├── ai/
+│   │   │   ├── fetchers/
+│   │   │   ├── publisher/
+│   │   │   └── scheduler/
+│   │   ├── queue/
+│   │   │   ├── workers/
+│   │   │   └── *.queue.js
+│   │   ├── routes/
+│   │   ├── services/
+│   │   ├── swagger/
+│   │   ├── utils/
+│   │   └── server.js
+│   └── package.json
+│
+├── frontend/
+│   ├── public/
+│   ├── src/
+│   │   ├── api/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── lib/
+│   │   ├── App.jsx
+│   │   └── main.jsx
+│   └── package.json
+│
+├── Architecture.md
+└── README.md
+```
+
+---
+
+# Dashboard Features
+
+The frontend dashboard provides operational visibility into the entire automation workflow.
+
+## Dashboard Pages
+
+### Analytics Dashboard
+
+Displays:
+
+- Total fetched articles
+- AI-generated posts
+- Published posts
+- Failed jobs
+- Queue statistics
+- Publishing metrics
+
+---
+
+### Fetcher Management
+
+Manual controls for triggering fetch operations from supported platforms.
+
+Features:
+
+- Single-click fetch triggers
+- Real-time fetch status
+- Toast notifications
+- Source-based filtering
+
+---
+
+### Generated Posts
+
+Manage AI-generated LinkedIn drafts.
+
+Features include:
+
+- Post previews
+- Status tracking
+- Retry publishing
+- Delete drafts
+- Manual publishing
+
+---
+
+### Queue Monitoring
+
+Integrated BullBoard dashboard for:
+
+- Active jobs
+- Failed jobs
+- Retry handling
+- Queue inspection
+- Worker monitoring
+- Delayed jobs
+
+---
+
+# API Overview
+
+## Content Fetching APIs
+
+| Method | Endpoint |
+|---|---|
+| POST | `/api/devto` |
+| POST | `/api/medium` |
+| POST | `/api/github` |
+| POST | `/api/npm` |
+| POST | `/api/hashnode` |
+| POST | `/api/reddit` |
+| POST | `/api/nodeweekly` |
+| GET | `/api/fetch` |
+
+---
+
+## AI APIs
+
+| Method | Endpoint |
+|---|---|
+| POST | `/api/ai/generate` |
+| GET | `/api/ai-posts` |
+| GET | `/api/ai-posts/:id` |
+| PUT | `/api/ai-posts/:id` |
+| DELETE | `/api/ai-posts/:id` |
+
+---
+
+## LinkedIn APIs
+
+| Method | Endpoint |
+|---|---|
+| GET | `/api/auth/linkedin/authorize` |
+| GET | `/api/auth/linkedin/callback` |
+| POST | `/api/auth/linkedin/disconnect` |
+| GET | `/api/auth/linkedin/status` |
+| POST | `/api/publisher/publish` |
+
+---
+
+## Monitoring APIs
+
+| Method | Endpoint |
+|---|---|
+| GET | `/api/dashboard` |
+| GET | `/admin/queues` |
+
+---
+
+# Local Development Setup
+
+## Prerequisites
+
+Required services:
+
+- Node.js 18+
+- MongoDB
+- Redis
+- Google Gemini API Key
+- LinkedIn Developer App
+
+---
+
+# Installation
+
+## Clone Repository
+
+```bash
+git clone <repository-url>
+cd Linkedin-Bot
+```
+
+---
+
+## Install Backend Dependencies
+
 ```bash
 cd backend
 npm install
 ```
 
-### Step 3: Install Frontend Dependencies
+---
+
+## Install Frontend Dependencies
+
 ```bash
 cd ../frontend
 npm install
 ```
 
-### Step 4: Environment Configuration
-See [Environment Configuration](#environment-configuration) section below.
-
-### Step 5: Start MongoDB & Redis
-```bash
-# MongoDB (if local)
-mongod
-
-# Redis (if local)
-redis-server
-```
-
-### Step 6: Start Backend
-```bash
-cd backend
-npm run dev  # Development with nodemon
-# or
-npm start    # Production
-```
-
-### Step 7: Start Frontend
-```bash
-cd frontend
-npm run dev
-```
-
-### Step 8: Access Application
-- **Frontend**: http://localhost:5173 (Vite default)
-- **Backend**: http://localhost:5000
-- **BullBoard Dashboard**: http://localhost:5000/admin/queues
-
 ---
 
-## ⚙️ Environment Configuration
+# Environment Variables
 
-### Backend `.env` file
+## Backend `.env`
 
 ```env
-# Server
 PORT=5000
 NODE_ENV=development
 
-# Database
-MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/<database>
+# MongoDB
+MONGODB_URI=
 
 # Redis
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 REDIS_PASSWORD=
 
-# Google Generative AI (Gemini)
-GOOGLE_API_KEY=your_gemini_api_key_here
+# Gemini API
+GOOGLE_API_KEY=
 
 # LinkedIn OAuth
-LINKEDIN_CLIENT_ID=your_linkedin_client_id
-LINKEDIN_CLIENT_SECRET=your_linkedin_client_secret
+LINKEDIN_CLIENT_ID=
+LINKEDIN_CLIENT_SECRET=
 LINKEDIN_REDIRECT_URI=http://localhost:5000/api/auth/linkedin/callback
 
-# Session Secret
-SESSION_SECRET=your_session_secret_key
+# Session
+SESSION_SECRET=
 
-# BullBoard Dashboard Auth (optional)
+# BullBoard
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD=secure_password
+ADMIN_PASSWORD=admin
 
 # Logging
 LOG_LEVEL=info
 ```
 
-### Frontend Configuration
-
-Vite automatically loads from `backend/.env` via proxy:
-- Configure `vite.config.js` proxy to forward API calls to `http://localhost:5000`
-
 ---
 
-## ▶️ Running the Application
+# Running the Application
 
-### Development Mode
+## Start Redis
 
-**Terminal 1 - Backend**:
-```bash
-cd backend
-npm run dev
-```
-
-**Terminal 2 - Frontend**:
-```bash
-cd frontend
-npm run dev
-```
-
-**Terminal 3 - Redis (if using local)**:
 ```bash
 redis-server
 ```
 
-### Production Mode
+---
 
-**Backend**:
+## Start Backend
+
 ```bash
 cd backend
-npm start
+npm run dev
 ```
 
-**Frontend**:
+---
+
+## Start Frontend
+
 ```bash
 cd frontend
-npm run build
-npm run preview
+npm run dev
 ```
 
 ---
 
-## 📡 API Endpoints
+# Application URLs
 
-### Content Fetching
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/devto` | Fetch articles from Dev.to |
-| `POST` | `/api/medium` | Fetch articles from Medium |
-| `POST` | `/api/github` | Fetch trending repos from GitHub |
-| `POST` | `/api/npm` | Fetch trending packages from NPM |
-| `POST` | `/api/hashnode` | Fetch articles from Hashnode |
-| `POST` | `/api/nodeweekly` | Fetch Node.js weekly newsletter |
-| `POST` | `/api/reddit` | Fetch posts from Reddit |
-| `GET` | `/api/fetch` | Get all fetched articles |
-
-### AI Post Generation
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/ai/generate` | Manually trigger AI generation |
-| `GET` | `/api/ai-posts` | Get all AI-generated posts |
-| `GET` | `/api/ai-posts/:id` | Get specific AI post |
-| `PUT` | `/api/ai-posts/:id` | Update post status |
-| `DELETE` | `/api/ai-posts/:id` | Delete AI post |
-
-### LinkedIn Publishing
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/auth/linkedin/authorize` | Start LinkedIn OAuth |
-| `GET` | `/api/auth/linkedin/callback` | OAuth callback handler |
-| `POST` | `/api/auth/linkedin/disconnect` | Disconnect LinkedIn |
-| `GET` | `/api/auth/linkedin/status` | Check connection status |
-| `POST` | `/api/publisher/publish` | Manually publish post |
-| `GET` | `/api/publisher/status/:postId` | Get post status |
-
-### Dashboard & Monitoring
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/dashboard` | Get dashboard statistics |
-| `GET` | `/admin/queues` | BullBoard queue monitoring UI |
+| Service | URL |
+|---|---|
+| Frontend | `http://localhost:5173` |
+| Backend API | `http://localhost:5000` |
+| BullBoard Dashboard | `http://localhost:5000/admin/queues` |
+| Swagger Docs | `http://localhost:5000/api-docs` |
 
 ---
 
-## 📊 Dashboard & Monitoring
+# Queue Monitoring
 
-### BullBoard Job Queue Dashboard
+BullBoard provides real-time visibility into all background jobs.
 
-Access at: `http://localhost:5000/admin/queues`
+## Features
 
-**Features**:
-- View all queues: Fetcher, AI, LinkedIn
-- Monitor job status: Waiting, Active, Completed, Failed
-- Inspect job details and logs
-- Manually retry failed jobs
-- Clear queue (with caution)
-
-**Queue Information**:
-| Queue | Purpose | Trigger |
-|-------|---------|---------|
-| **fetcherQueue** | Content fetching | Scheduler (every 2 days) or manual |
-| **aiQueue** | AI post generation | Scheduler (periodic) or manual |
-| **linkedinQueue** | LinkedIn publishing | Scheduler (periodic) or manual |
-
-### React Dashboard
-
-Access at: `http://localhost:5173/`
-
-**Pages**:
-1. **Dashboard**: Overview statistics
-   - Total fetched articles
-   - AI-generated posts count
-   - Published posts count
-   - Failed posts count
-
-2. **Fetcher**: Manual content fetching
-   - 8 source buttons (Dev.to, Medium, GitHub, NPM, Hashnode, Node Weekly, Reddit, Daily Dev)
-   - Shows loading state during fetch
-   - Toast notifications for success/error
-
-3. **Records**: View all fetched articles
-   - Searchable table of articles
-   - Source, title, date filters
-   - Direct link to original article
-
-4. **Posts**: View AI-generated posts
-   - Status indicators (draft, queued, posted, failed)
-   - AI post preview
-   - Manual publish/delete options
-
-5. **Queue Monitor**: BullBoard dashboard embed
-   - Real-time job tracking
-   - Queue statistics
+- Queue statistics
+- Failed job inspection
+- Retry management
+- Delayed jobs
+- Payload inspection
+- Active worker monitoring
 
 ---
 
+# Logging
 
-## 🛠️ Troubleshooting
+Application logs are stored in:
 
-### MongoDB Connection Issues
-- Verify MongoDB is running: `mongosh`
-- Check `MONGODB_URI` in `.env`
-- Ensure IP whitelist in MongoDB Atlas
+```bash
+backend/logs/
+```
 
-### Redis Connection Issues
-- Verify Redis is running: `redis-cli ping` (should return "PONG")
-- Check `REDIS_HOST` and `REDIS_PORT` in `.env`
-- Ensure no port conflicts
+## Log Files
 
-### Gemini API Issues
-- Verify `GOOGLE_API_KEY` in `.env`
-- Check API quota in Google Cloud Console
-- Ensure Generative AI API is enabled
-
-### LinkedIn OAuth Issues
-- Verify `LINKEDIN_CLIENT_ID` and `LINKEDIN_CLIENT_SECRET`
-- Check redirect URI matches LinkedIn app settings
-- Ensure LinkedIn app is in approved status
-
-### Jobs Not Processing
-- Check BullBoard dashboard for stuck jobs
-- Verify worker files are loaded in `server.js`
-- Check logs: `backend/logs/`
-- Restart workers: Stop and restart backend
+| File | Description |
+|---|---|
+| `combined.log` | All application logs |
+| `error.log` | Error-only logs |
 
 ---
 
-## 📝 Logging
+# Security Notes
 
-Application logs are stored in `backend/logs/` using Winston:
+## Recommended Production Practices
 
-- **Log Levels**: error, warn, info, verbose, debug, silly
-- **Log Format**: JSON with timestamp, level, message
-- **Files**: 
-  - `combined.log` - All logs
-  - `error.log` - Error logs only
-
----
-
-## 🔐 Security Considerations
-
-1. **Environment Variables**: Never commit `.env` to version control
-2. **Session Secret**: Use strong, random `SESSION_SECRET`
-3. **LinkedIn Tokens**: Store securely in database, never expose in frontend
-4. **CORS**: Configure for production domain
-5. **BullBoard Auth**: Protect `/admin/queues` with username/password
-6. **Validate Input**: Sanitize all user inputs
-7. **Rate Limiting**: Implement rate limiting on API endpoints for production
+- Never commit `.env` files
+- Use secure session secrets
+- Protect BullBoard routes
+- Enable API rate limiting
+- Restrict CORS origins
+- Secure LinkedIn OAuth credentials
+- Validate and sanitize request payloads
 
 ---
 
-## 📄 License
+# Troubleshooting
+
+## MongoDB Connection Issues
+
+```bash
+mongosh
+```
+
+Verify:
+
+- MongoDB service is running
+- Atlas IP whitelist is configured
+- `MONGODB_URI` is valid
+
+---
+
+## Redis Issues
+
+```bash
+redis-cli ping
+```
+
+Expected response:
+
+```bash
+PONG
+```
+
+---
+
+## Gemini API Errors
+
+Check:
+
+- API quota limits
+- API key validity
+- Gemini API enablement
+
+---
+
+## BullMQ Jobs Not Processing
+
+Verify:
+
+- Redis is running
+- Worker files are loaded
+- Queue connections are healthy
+- Backend workers started correctly
+
+---
+
+# Future Improvements
+
+- Multi-account LinkedIn support
+- AI prompt customization
+- Engagement analytics dashboard
+- YouTube/Substack integrations
+- Team workspaces
+- Docker deployment
+- Kubernetes worker scaling
+- Scheduled publishing UI
+- Webhook integrations
+
+---
+
+# License
 
 ISC
 
 ---
 
-## 👥 Contributing
+# Contributing
 
-Contributions welcome! Please follow existing code style and add tests for new features.
+Contributions and improvements are welcome.
 
----
-
-## 📞 Support
-
-For issues, questions, or suggestions, please open an issue in the repository.
+Please follow the existing folder structure and code conventions when submitting pull requests.
 
 ---
 
-## 🗺️ Roadmap
+# Author
 
-- [ ] Add more content sources (YouTube, Substack, Dev Community)
-- [ ] Implement user authentication for frontend
-- [ ] Support multiple LinkedIn accounts
-- [ ] Analytics dashboard (engagement metrics)
-- [ ] Mobile app support
-- [ ] Post performance tracking
-- [ ] Custom AI prompts per user
-- [ ] Webhook integrations
+Built for automated developer content distribution and AI-assisted LinkedIn publishing workflows.
 
----
-
-**Last Updated**: March 2026

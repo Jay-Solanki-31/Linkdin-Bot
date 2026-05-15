@@ -5,6 +5,7 @@ import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.js";
 
 import cors from "cors";
+import cron from "node-cron";
 import logger from "./utils/logger.js";
 import { connectDB } from "./config/db.js";
 
@@ -24,6 +25,7 @@ import dashboardAuth from "./middleware/bullmq.middleware.js";
 // Scheduler
 import { startFetchScheduler } from "./modules/scheduler/fetchScheduler.js";
 import { startSlotAllocatorScheduler } from "./modules/scheduler/slotAllocator.scheduler.js";
+import { recoverStuckJobs } from "./queue/recovery.js";
 
 dotenv.config();
 
@@ -76,6 +78,10 @@ async function start() {
   try {
     await connectDB();
     logger.info("DB connected");
+
+    cron.schedule("*/10 * * * *", async () => {
+    await recoverStuckJobs();
+  });
 
     // 🔥 START WORKERS
     await import("./queue/workers/fetcher.worker.js");

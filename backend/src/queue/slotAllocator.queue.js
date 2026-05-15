@@ -7,8 +7,8 @@ export const slotAllocatorQueue = new Queue("slot-allocator-queue", {
   defaultJobOptions: {
     attempts: 3,
     backoff: { type: "exponential", delay: 5000 },
-    removeOnComplete: true, 
-    removeOnFail: {count:10},
+    removeOnComplete: { age: 3600, count: 20 },
+    removeOnFail: { count: 10 },
   },
 });
 
@@ -19,7 +19,8 @@ export const enqueueSlotAllocation = async () => {
     {
       jobId: `allocate-slots`,
       attempts: 1,
-      removeOnComplete: true,
+      removeOnComplete: { age: 3600, count: 20 },
+      removeOnFail: { count: 10 },
     }
   );
 };

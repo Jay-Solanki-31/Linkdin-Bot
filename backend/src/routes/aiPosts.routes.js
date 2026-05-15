@@ -1,5 +1,7 @@
 import express from "express";
 import GeneratedPost from "../models/generatedPost.model.js";
+import { linkedinQueue } from "../queue/linkedin.queue.js";
+import logger from "../utils/logger.js";
 
 
 const router = express.Router();
@@ -102,6 +104,15 @@ router.delete("/:id", async (req, res) => {
         success: false,
         message: "Posted content cannot be deleted",
       });
+    }
+
+    // remove BullMQ delayed job
+    const job = await linkedinQueue.getJob(`linkedin-${id}`);
+
+    if (job) {
+      await job.remove();
+
+      logger.info(`Removed BullMQ job for post ${id}`);
     }
 
     await post.deleteOne();

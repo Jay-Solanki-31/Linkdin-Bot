@@ -20,9 +20,19 @@ const GeneratedPostSchema = new mongoose.Schema({
   slot: String,
   linkedinPostUrn: String,
   postedAt: Date,
-  error: String,
-  attempts: { type: Number, default: 0 },
-  lastAttemptAt: Date,
+  error: {type: String},
+  recoveryAttempts: {
+  type: Number,
+  default: 0,
+  },
+
+  lastFailedAt: {
+    type: Date,
+  },
+
+  failedStage: {
+    type: String,
+  },
   publishAt: Date,
   expiresAt: {
   type: Date
