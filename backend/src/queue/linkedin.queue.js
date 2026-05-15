@@ -5,7 +5,7 @@ import { JOB_TYPES } from "./jobTypes.js";
 export const linkedinQueue = new Queue("linkedin-queue", {
   connection: redisConnection.connection,
   defaultJobOptions: {
-    removeOnComplete: true,
+    removeOnComplete: { age: 3600, count: 20 },
     removeOnFail: { count: 10 },
     attempts: 3,
     backoff: {
@@ -30,8 +30,8 @@ export async function enqueueLinkedInPost(postId) {
         type: "exponential",
         delay: 30000,
       },
-    removeOnComplete: true, 
-    removeOnFail: {count:10},
+    removeOnComplete: { age: 3600, count: 20 },
+    removeOnFail: { count: 10 },
     }
   );
 }

@@ -10,34 +10,45 @@ import { JOB_TYPES } from "../jobTypes.js";
 
 import logger from "../../utils/logger.js";
 
+import { aiDLQ } from "../ai.dlq.queue.js";
 
-export default new Worker(
+const worker = new Worker(
   "ai-processing-queue",
   async (job) => {
     const { postId } = job.data;
-    logger.info(`Processing AI job for postId: ${postId}`);
 
-    const post = await GeneratedPost.findOneAndUpdate(
-      {
-        _id: postId,
-        status: { $in: ["draft", "generating", "failed"] }, 
-      },
-      { $set: { status: "generating" } },
-      { returnDocument: "after" }
-    );
+    try {
+
+      logger.info(`Processing AI job for postId: ${postId}`);
+
+      const post = await GeneratedPost.findOneAndUpdate(
+        {
+          _id: postId,
+          status: { $in: ["draft"] },
+        },
+        {
+          $set: {
+            status: "generating",
+          },
+        },
+        {
+          returnDocument: "after",
+        }
+      );
 
     if (!post) {
       logger.warn(`Post not eligible for AI generation: ${postId}`);
       return;
     }
 
-    const content = await FetchedContent.findById(post.articleId);
-    if (!content) {
-      logger.error(`Content not found for articleId: ${post.articleId}`);
-      throw new Error("Content not found");
-    }
+      const content = await FetchedContent.findById(post.articleId);
 
-    try {
+      if (!content) {
+        throw new Error("Content not found");
+      }
+
+      // throw new Error("TEST_RETRY");
+
       const text = await aiService.generateForContent(content);
       logger.info(`Generated text for postId: ${postId}`);
 
@@ -62,20 +73,61 @@ export default new Worker(
         }
       );
 
-      logger.info(`AI job completed for ${postId} with delay: ${delay}ms`);
+      logger.info(`AI job completed for ${postId}`);
 
     } catch (err) {
-      await GeneratedPost.findByIdAndUpdate(postId, { status: "draft" });
-    
-      logger.error(`Gemini Error for ${postId}: ${err.message}`);
-       throw err; 
+
+      logger.error(`AI job failed: ${err.message}`);
+
+      if (job.attemptsMade + 1 < job.opts.attempts) {
+
+        await GeneratedPost.findByIdAndUpdate(postId, {
+          status: "draft",
+          error: err.message,
+        });
+
+      }
+
+      throw err;
     }
   },
   {
     connection: redisConnection.connection,
-    concurrency: 1,
-    lockDuration:60000,
-    stalledInterval:300000
   }
 );
 
+worker.on("failed", async (job, err) => {
+  if (job.attemptsMade < job.opts.attempts) {
+    return;
+  }
+
+  const { postId } = job.data;
+
+  logger.error(`DLQ triggered for ${postId}`);
+
+  try {
+    await aiDLQ.add(
+      "AI_JOB_FAILED",
+      {
+        postId,
+        reason: err.message,
+        attemptsMade: job.attemptsMade,
+        failedAt: new Date(),
+      },
+      {
+        jobId: `dlq-${postId}`,
+      }
+    );
+
+    await GeneratedPost.findByIdAndUpdate(postId, {
+    status: "failed",
+    error: err.message,
+    failedStage: "ai",
+    lastFailedAt: new Date(),
+  });
+  } catch (e) {
+    logger.error(`DLQ push failed: ${e.message}`);
+  }
+});
+
+export default worker;
