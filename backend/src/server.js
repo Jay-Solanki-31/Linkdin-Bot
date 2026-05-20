@@ -72,6 +72,13 @@ app.use("/admin/queues", dashboardAuth, bullBoard.getRouter());
 app.use("/api/slot-allocator", slotAllocatorRoutes);
 app.use("/test", testRoutes);
 
+if (process.env.ENABLE_BULL_BOARD === "true") {
+  app.use(
+    "/internal/queues-92xk",
+    dashboardAuth,
+    bullBoard.getRouter()
+  );
+}
 const PORT = process.env.PORT || 5000;
 
 async function start() {

@@ -1,18 +1,12 @@
 import dotenv from 'dotenv';
 dotenv.config();
-const ADMIN_KEY = process.env.ADMIN_KEY;
+import basicAuth from "express-basic-auth";
 
-function dashboardAuth(req, res, next) {
-  if (req.method === 'GET' && !req.headers['x-admin-key']) {
-    return next();
-  }
-
-  if (req.headers['x-admin-key'] !== ADMIN_KEY) {
-    return res.status(401).json({ message: 'Unauthorized' });
-  }
-
-  next();
-}
-
+const dashboardAuth = basicAuth({
+  users: {
+    [process.env.ADMIN_USER]: process.env.ADMIN_PASSWORD,
+  },
+  challenge: true,
+});
 
 export default dashboardAuth;
