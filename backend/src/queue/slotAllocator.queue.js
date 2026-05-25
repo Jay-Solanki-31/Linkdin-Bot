@@ -17,7 +17,7 @@ export const enqueueSlotAllocation = async () => {
     JOB_TYPES.ALLOCATE_SLOTS,
     {},
     {
-      jobId: `allocate-slots`,
+      jobId: `allocate-slots-${new Date().toISOString().slice(0,10)}`,
       attempts: 1,
       removeOnComplete: { age: 3600, count: 20 },
       removeOnFail: { count: 10 },
