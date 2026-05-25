@@ -78,10 +78,7 @@ async function start() {
   try {
     await connectDB();
     logger.info("DB connected");
-
-    cron.schedule("*/10 * * * *", async () => {
-    await recoverStuckJobs();
-  });
+    cron.schedule("0 2 * * *", async () => { await recoverStuckJobs(); }, { timezone: "Asia/Kolkata" });
 
     // 🔥 START WORKERS
     await import("./queue/workers/fetcher.worker.js");
