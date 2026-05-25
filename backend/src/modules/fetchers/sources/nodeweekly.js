@@ -1,20 +1,24 @@
 import Parser from "rss-parser";
+import { cleanContent } from "../../../utils/cleanContent.js";
+
 const parser = new Parser();
 
 export default async function fetchNodeweekly() {
   try {
-    const feed = await parser.parseURL("https://nodeweekly.com/rss");
+    const feed = await parser.parseURL(
+      "https://nodeweekly.com/rss"
+    );
 
     return feed.items.slice(0, 4).map((it) => ({
       title: it.title,
       url: it.link,
-
-      summary: it.contentSnippet
-        ?.replace(/https?:\/\/\S+/g, "")
-        ?.replace(/\s+/g, " ")
-        ?.trim() || "",
-
-      pubDate: it.pubDate,
+      description: cleanContent(
+        it["content:encoded"] ||
+        it.content ||
+        it.contentSnippet ||
+        ""
+      ),
+      published_at: it.pubDate,
       raw: it,
     }));
   } catch (err) {

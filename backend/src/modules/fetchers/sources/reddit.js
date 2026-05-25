@@ -1,6 +1,12 @@
-export default async function fetchReddit({ topic = "nodejs" } = {}) {
+import { cleanContent } from "../../../utils/cleanContent.js";
+
+export default async function fetchReddit({
+  topic = "nodejs",
+} = {}) {
   try {
-    const url = `https://www.reddit.com/r/${encodeURIComponent(topic)}/hot.json?limit=5`;
+    const url = `https://www.reddit.com/r/${encodeURIComponent(
+      topic
+    )}/hot.json?limit=5`;
 
     const res = await fetch(url, {
       headers: {
@@ -13,13 +19,22 @@ export default async function fetchReddit({ topic = "nodejs" } = {}) {
     }
 
     const json = await res.json();
+
     const posts = json?.data?.children ?? [];
 
     return posts.map(({ data }) => ({
       title: data.title,
       url: `https://www.reddit.com${data.permalink}`,
-      summary: data.selftext?.slice(0, 300) || null,
+      description: cleanContent(
+        data.selftext ||
+        data.title ||
+        ""
+      ),
       score: data.score,
+      tag_list: [topic],
+      published_at: new Date(
+        data.created_utc * 1000
+      ).toISOString(),
       raw: data,
     }));
   } catch (err) {

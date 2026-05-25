@@ -1,3 +1,5 @@
+import { cleanContent } from "../../../utils/cleanContent.js";
+
 export default async function fetchHashnode({ topic = "nodejs" } = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20000);
@@ -6,12 +8,18 @@ export default async function fetchHashnode({ topic = "nodejs" } = {}) {
     const query = `
       query GetTagPosts($slug: String!) {
         tag(slug: $slug) {
-          posts(first: 4, filter: {}) {
+          posts(first: 4) {
             edges {
               node {
                 title
                 url
                 brief
+                content {
+                  markdown
+                }
+                tags {
+                  name
+                }
                 publishedAt
               }
             }
@@ -36,7 +44,13 @@ export default async function fetchHashnode({ topic = "nodejs" } = {}) {
     const json = await response.json();
 
     if (!response.ok || json.errors || !json.data?.tag) {
-      if (json.errors) console.error("Hashnode API Error:", json.errors[0].message);
+      if (json.errors) {
+        console.error(
+          "Hashnode API Error:",
+          json.errors[0].message
+        );
+      }
+
       return [];
     }
 
@@ -44,8 +58,14 @@ export default async function fetchHashnode({ topic = "nodejs" } = {}) {
     return edges.map((edge) => ({
       title: edge.node.title,
       url: edge.node.url,
-      summary: edge.node.brief || null,
-      pubDate: edge.node.publishedAt,
+      description: cleanContent(
+        edge.node.content?.markdown ||
+        edge.node.brief ||
+        ""
+      ),
+      tag_list:
+        edge.node.tags?.map((tag) => tag.name) || [],
+      published_at: edge.node.publishedAt,
       raw: edge.node,
     }));
   } catch (err) {

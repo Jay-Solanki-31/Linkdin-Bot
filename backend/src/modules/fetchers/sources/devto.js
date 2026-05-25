@@ -1,4 +1,5 @@
 import axios from "axios";
+import { cleanContent } from "../../../utils/cleanContent.js";
 
 export default async function fetchDevto({ topic = "node" } = {}) {
   try {
@@ -14,10 +15,11 @@ export default async function fetchDevto({ topic = "node" } = {}) {
     return (res.data || []).map((item) => ({
       title: item.title,
       url: item.url,
-      description:
+      description: cleanContent(
+        item.body_markdown ||
         item.description ||
-        item.body_markdown?.slice(0, 300) ||
-        null,
+        ""
+      ),
       tag_list: item.tag_list || [],
       published_at: item.published_at,
       raw: item,
