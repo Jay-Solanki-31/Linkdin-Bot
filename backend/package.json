@@ -26,6 +26,7 @@
     "dayjs": "^1.11.20",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "express-basic-auth": "^1.2.1",
     "express-session": "^1.18.2",
     "ioredis": "^5.8.2",
     "mongoose": "^9.0.0",

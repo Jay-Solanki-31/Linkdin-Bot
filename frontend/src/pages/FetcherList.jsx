@@ -1,12 +1,12 @@
-import { useEffect, useState } from "react";
-import { getFetchedContent } from "@/api/fetcher.api";
+import { useEffect, useState } from "react"
+import { getFetchedContent } from "@/api/fetcher.api"
 
 import {
   Card,
   CardHeader,
   CardTitle,
   CardContent,
-} from "@/components/ui/card";
+} from "@/components/ui/card"
 
 import {
   Table,
@@ -15,67 +15,69 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/components/ui/table"
 
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Button } from "@/components/ui/button"
+import { toast } from "sonner"
+import { StatusBadge } from "@/components/ui/status-badge"
 
 export default function FetcherList() {
-  const [records, setRecords] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [records, setRecords] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [search, setSearch] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
 
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
 
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelected] = useState(null)
 
-  const pageSize = 10;
+  const pageSize = 10
 
   useEffect(() => {
     const handler = setTimeout(() => {
-      setPage(1);
-      setDebouncedSearch(search);
-    }, 500);
+      setPage(1)
+      setDebouncedSearch(search)
+    }, 500)
 
-    return () => clearTimeout(handler);
-  }, [search]);
+    return () => clearTimeout(handler)
+  }, [search])
 
   const loadData = async () => {
     try {
-      setLoading(true);
+      setLoading(true)
 
       const res = await getFetchedContent({
         page,
         limit: pageSize,
         search: debouncedSearch,
-      });
+      })
 
-      setRecords(res.data.data);
-      setTotalPages(res.data.pagination.pages || 1);
-    } catch (err) {
-      toast.error("Failed to load fetched records");
+      setRecords(res.data.data)
+      setTotalPages(res.data.pagination.pages || 1)
+    } catch {
+      toast.error("Failed to load fetched records")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
-    loadData();
-  }, [page, debouncedSearch]);
+    loadData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, debouncedSearch])
 
   const nextPage = () => {
-    if (page < totalPages) setPage((p) => p + 1);
-  };
+    if (page < totalPages) setPage((p) => p + 1)
+  }
 
   const prevPage = () => {
-    if (page > 1) setPage((p) => p - 1);
-  };
+    if (page > 1) setPage((p) => p - 1)
+  }
 
   return (
     <div className="space-y-6">
@@ -86,118 +88,122 @@ export default function FetcherList() {
         </p>
       </div>
 
-      <Card>
-        <CardHeader className="space-y-4 border-b">
-          <CardTitle className="text-base">All Records</CardTitle>
+      <div>
+        <Card>
+          <CardHeader className="space-y-4 border-b">
+            <CardTitle className="text-base">All Records</CardTitle>
 
-          <Input
-            placeholder="Search by title or source..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </CardHeader>
+            <Input
+              placeholder="Search by title or source..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </CardHeader>
 
-        <CardContent className="pt-6">
-          {loading ? (
-            <div className="space-y-3">
-              {[...Array(6)].map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full" />
-              ))}
-            </div>
-          ) : records.length > 0 ? (
-            <>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Source</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead className="text-right">
-                        Action
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-
-                  <TableBody>
-                    {records.map((item) => (
-                      <TableRow key={item._id} className="hover:bg-muted/40">
-                        <TableCell className="max-w-xs truncate text-sm font-medium">
-                          {item.title}
-                        </TableCell>
-
-                        <TableCell>
-                          <Badge variant="secondary" className="text-xs">
-                            {item.source}
-                          </Badge>
-                        </TableCell>
-
-                        <TableCell className="text-xs text-muted-foreground">
-                          {new Date(item.createdAt).toLocaleDateString()}
-                        </TableCell>
-
-                        <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setSelected(item)}
-                          >
-                            View
-                          </Button>
-                        </TableCell>
+          <CardContent className="pt-6">
+            {loading ? (
+              <div className="space-y-3">
+                {[...Array(6)].map((_, i) => (
+                  <Skeleton key={i} className="h-10 w-full" />
+                ))}
+              </div>
+            ) : records.length > 0 ? (
+              <>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Title</TableHead>
+                        <TableHead>Source</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>ExpireAt</TableHead>
+                        <TableHead className="text-right">Action</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+
+                    <TableBody>
+                      {records.map((item) => (
+                        <tr
+                          key={item._id}
+                          className="hover:bg-muted/40 border-b transition-colors"
+                        >
+                          <TableCell className="max-w-xs truncate text-sm font-medium">
+                            {item.title}
+                          </TableCell>
+
+                          <TableCell>
+                            <Badge variant="secondary" className="text-xs">
+                              {item.source}
+                            </Badge>
+                          </TableCell>
+
+                          <TableCell className="text-xs text-muted-foreground">
+                            {new Date(item.createdAt).toLocaleDateString()}
+                          </TableCell>
+
+                          <TableCell className="text-xs text-muted-foreground">
+                            {item.expiresAt ? new Date(item.expiresAt).toLocaleDateString() : "N/A"}
+                          </TableCell>
+
+                          <TableCell className="text-right">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setSelected(item)}
+                            >
+                              View
+                            </Button>
+                          </TableCell>
+                        </tr>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                <div className="flex items-center justify-between mt-6">
+                  <Button
+                    onClick={prevPage}
+                    disabled={page === 1}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Prev
+                  </Button>
+
+                  <span className="text-xs text-muted-foreground">
+                    Page {page} of {totalPages}
+                  </span>
+
+                  <Button
+                    onClick={nextPage}
+                    disabled={page === totalPages}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Next
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-10 text-sm text-muted-foreground">
+                No records found
               </div>
-
-              <div className="flex items-center justify-between mt-6">
-                <Button
-                  onClick={prevPage}
-                  disabled={page === 1}
-                  variant="outline"
-                  size="sm"
-                >
-                  Prev
-                </Button>
-
-                <span className="text-xs text-muted-foreground">
-                  Page {page} of {totalPages}
-                </span>
-
-                <Button
-                  onClick={nextPage}
-                  disabled={page === totalPages}
-                  variant="outline"
-                  size="sm"
-                >
-                  Next
-                </Button>
-              </div>
-            </>
-          ) : (
-            <div className="text-center py-10 text-sm text-muted-foreground">
-              No records found
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {selected && (
-        <RecordViewer
-          record={selected}
-          onClose={() => setSelected(null)}
-        />
+        <RecordViewer record={selected} onClose={() => setSelected(null)} />
       )}
     </div>
-  );
+  )
 }
-
 
 function RecordViewer({ record, onClose }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex justify-end">
-      <div className="w-full max-w-2xl bg-background h-full flex flex-col shadow-xl">
+      <div className="w-full max-w-2xl bg-background h-full flex flex-col shadow-xl transition-transform duration-300">
         <div className="p-4 border-b flex justify-between items-center">
           <h2 className="font-semibold">Article Preview</h2>
           <Button size="sm" variant="outline" onClick={onClose}>
@@ -213,6 +219,12 @@ function RecordViewer({ record, onClose }) {
             {record.aiGenerated && <Badge>AI</Badge>}
             {record.isQueued && <Badge>Queued</Badge>}
           </div>
+
+          {record.expiresAt && (
+              <div className="text-sm text-muted-foreground">
+                Expire At: {new Date(record.expiresAt).toLocaleDateString()}
+              </div>
+            )}
 
           {record.url && (
             <a
@@ -231,5 +243,5 @@ function RecordViewer({ record, onClose }) {
         </div>
       </div>
     </div>
-  );
+  )
 }

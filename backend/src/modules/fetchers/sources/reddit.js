@@ -1,6 +1,12 @@
-export default async function fetchReddit({ topic = "nodejs" } = {}) {
+import { extractBestContent } from "../../../utils/extractBestContent.js";
+
+export default async function fetchReddit({
+  topic = "node",
+} = {}) {
   try {
-    const url = `https://www.reddit.com/r/${encodeURIComponent(topic)}/hot.json?limit=5`;
+    const url = `https://www.reddit.com/r/${encodeURIComponent(
+      topic
+    )}/hot.json?limit=5`;
 
     const res = await fetch(url, {
       headers: {
@@ -13,12 +19,19 @@ export default async function fetchReddit({ topic = "nodejs" } = {}) {
     }
 
     const json = await res.json();
-    const posts = json?.data?.children ?? [];
+
+    const posts = json?.data?.children || [];
 
     return posts.map(({ data }) => ({
       title: data.title,
+
       url: `https://www.reddit.com${data.permalink}`,
-      summary: data.selftext?.slice(0, 300) || null,
+
+      description: extractBestContent(
+        data.selftext,
+        data.title
+      ),
+
       score: data.score,
       raw: data,
     }));

@@ -1,4 +1,5 @@
 import axios from "axios";
+import { extractBestContent } from "../../../utils/extractBestContent.js";
 
 export default async function fetchDevto({ topic = "node" } = {}) {
   try {
@@ -7,17 +8,22 @@ export default async function fetchDevto({ topic = "node" } = {}) {
     )}&per_page=5`;
 
     const res = await axios.get(url, {
-      timeout: 10000,
-      headers: { "User-Agent": "content-fetcher/1.0" },
+      timeout: 15000,
+      headers: {
+        "User-Agent": "content-fetcher/1.0",
+      },
     });
 
     return (res.data || []).map((item) => ({
       title: item.title,
       url: item.url,
-      description:
-        item.description ||
-        item.body_markdown?.slice(0, 300) ||
-        null,
+
+      description: extractBestContent(
+        item.body_markdown,
+        item.description,
+        item.social_image
+      ),
+
       tag_list: item.tag_list || [],
       published_at: item.published_at,
       raw: item,
