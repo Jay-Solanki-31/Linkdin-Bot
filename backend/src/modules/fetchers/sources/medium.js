@@ -1,5 +1,5 @@
 import Parser from "rss-parser";
-import { cleanContent } from "../../../utils/cleanContent.js";
+import { extractBestContent } from "../../../utils/extractBestContent.js";
 
 const parser = new Parser();
 
@@ -18,13 +18,14 @@ export default async function fetchMedium({
     return feed.items.slice(0, 5).map((it) => ({
       title: it.title,
       url: it.link,
-      description: cleanContent(
-        it["content:encoded"] ||
-        it.content ||
-        it.contentSnippet ||
-        ""
+
+      description: extractBestContent(
+        it.content,
+        it.contentSnippet,
+        it.summary
       ),
-      published_at: it.pubDate,
+
+      pubDate: it.pubDate,
       raw: it,
     }));
   } catch (err) {

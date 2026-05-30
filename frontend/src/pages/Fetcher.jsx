@@ -12,7 +12,6 @@ const sources = [
   { id: "devto", label: "Dev.to", icon: <BookOpen className="w-6 h-6" />, color: "from-zinc-900 to-black", lightBg: "from-zinc-100 to-zinc-200" },
   { id: "medium", label: "Medium", icon: <Newspaper className="w-6 h-6" />, color: "from-emerald-600 to-emerald-800", lightBg: "from-emerald-50 to-emerald-100" },
   { id: "npm", label: "NPM", icon: <Package className="w-6 h-6" />, color: "from-red-600 to-red-500", lightBg: "from-red-50 to-red-100" },
-  { id: "hashnode", label: "Hashnode", icon: <Hash className="w-6 h-6" />, color: "from-blue-600 to-blue-700", lightBg: "from-blue-50 to-blue-100" },
   { id: "nodeweekly", label: "Node Weekly", icon: <Mail className="w-6 h-6" />, color: "from-green-600 to-green-700", lightBg: "from-green-50 to-green-100" },
   { id: "reddit", label: "Reddit", icon: <SiReddit className="w-6 h-6" />, color: "from-orange-600 to-orange-500", lightBg: "from-orange-50 to-orange-100" },
 ]
@@ -62,7 +61,7 @@ export default function Fetcher() {
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-3">
                   <div 
-                    className={`text-3xl p-3 rounded-lg bg-gradient-to-br ${s.lightBg} dark:from-opacity-20 dark:to-opacity-10 flex-shrink-0 group-hover:scale-110 transition-transform duration-200`}
+                    className={`text-3xl p-3 rounded-lg bg-gradient-to-br ${s.lightBg} dark:from-opacity-20 dark:to-opacity-10 flex-shrink-0 group-hover:scale-110 transition-transform duration-200 text-gray-700 dark:text-gray-900`}
                   >
                     {s.icon}
                   </div>

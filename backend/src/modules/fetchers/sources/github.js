@@ -8,61 +8,68 @@ export default async function fetchGithub() {
       "https://github.com/trending/javascript?since=daily";
 
     const response = await axios.get(trendingUrl, {
+      timeout: 40000,
       headers: {
         "User-Agent": "Mozilla/5.0",
       },
-      timeout: 10000,
     });
 
     const $ = cheerio.load(response.data);
+
     const results = [];
 
-    const repos = $("article.Box-row").slice(0, 5).toArray();
-
-    for (const el of repos) {
-      try {
+    $("article.Box-row")
+      .slice(0, 5)
+      .each((_, el) => {
         const titleEl = $(el).find("h2 a");
+
         const repoPath = titleEl.attr("href");
 
-        if (!repoPath) continue;
+        if (!repoPath) return;
 
-        const repoUrl = `https://github.com${repoPath}`;
+        const description =
+          $(el).find("p").text().trim() || "";
 
-        const repoRes = await axios.get(repoUrl, {
-          headers: {
-            "User-Agent": "Mozilla/5.0",
-          },
-          timeout: 10000,
-        });
+        const language =
+          $(el)
+            .find("span[itemprop='programmingLanguage']")
+            .text()
+            .trim() || "Unknown";
 
-        const repoPage = cheerio.load(repoRes.data);
+        const stars =
+          $(el)
+            .find("a[href$='/stargazers']")
+            .text()
+            .trim() || "0";
 
-        const readmeText = repoPage
-          $("#readme")
-          .text()
-          .trim();
+        const topics = [];
+
+        $(el)
+          .find("a.topic-tag")
+          .each((_, topic) => {
+            topics.push($(topic).text().trim());
+          });
 
         results.push({
-          title: titleEl.text().trim().replace(/\s+/g, " "),
-          url: repoUrl,
-          description: cleanContent(
-            readmeText ||
-            $(el).find("p").text().trim() ||
-            ""
-          ),
-          language:
-            $(el)
-              .find("span[itemprop='programmingLanguage']")
-              .text()
-              .trim() || "Unknown",
+          title: titleEl.text().replace(/\s+/g, " ").trim(),
 
+          url: `https://github.com${repoPath}`,
+
+          description: cleanContent(`
+            ${description}
+
+            Language: ${language}
+
+            Topics: ${topics.join(", ")}
+
+            Stars: ${stars}
+          `),
+
+          language,
           source: "github",
           timestamp: new Date(),
         });
-      } catch (repoErr) {
-        console.error("github.repo error:", repoErr.message);
-      }
-    }
+      });
 
     return results;
   } catch (err) {

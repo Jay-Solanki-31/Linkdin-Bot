@@ -9,18 +9,27 @@ export default async function fetchNodeweekly() {
       "https://nodeweekly.com/rss"
     );
 
-    return feed.items.slice(0, 4).map((it) => ({
-      title: it.title,
-      url: it.link,
-      description: cleanContent(
-        it["content:encoded"] ||
-        it.content ||
+    return feed.items.slice(0, 5).map((it) => {
+      let content =
         it.contentSnippet ||
-        ""
-      ),
-      published_at: it.pubDate,
-      raw: it,
-    }));
+        it.content ||
+        "";
+
+      content = content
+        .replace(/sponsor/gi, " ")
+        .replace(/advertisement/gi, " ")
+        .replace(/\s+/g, " ");
+
+      return {
+        title: it.title,
+        url: it.link,
+
+        description: cleanContent(content),
+
+        pubDate: it.pubDate,
+        raw: it,
+      };
+    });
   } catch (err) {
     console.error("nodeweekly.fetch error:", err.message);
     return [];

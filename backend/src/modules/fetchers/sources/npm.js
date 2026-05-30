@@ -6,63 +6,27 @@ export default async function fetchNpm() {
     const res = await axios.get(
       "https://registry.npmjs.org/-/v1/search?text=nodejs&size=5",
       {
-        timeout: 10000,
-        headers: {
-          "User-Agent": "content-fetcher/1.0",
-        },
+        timeout: 15000,
       }
     );
 
-    const packages = res.data.objects || [];
+    return (res.data.objects || []).map(({ package: pkg }) => ({
+      title: pkg?.name,
 
-    const results = [];
+      url: pkg?.links?.npm || null,
 
-    for (const { package: pkg } of packages) {
-      try {
-        if (!pkg?.name) continue;
+      description: cleanContent(`
+        ${pkg?.description || ""}
 
-        const metaRes = await axios.get(
-          `https://registry.npmjs.org/${pkg.name}`,
-          {
-            timeout: 10000,
-          }
-        );
+        Keywords:
+        ${(pkg?.keywords || []).join(", ")}
 
-        const latestVersion =
-          metaRes.data["dist-tags"]?.latest;
+        Version:
+        ${pkg?.version || "Unknown"}
+      `),
 
-        const latest =
-          metaRes.data.versions?.[latestVersion];
-
-        const readme =
-          latest?.readme ||
-          pkg.description ||
-          "";
-
-        results.push({
-          title: pkg.name,
-          url:
-            pkg.links?.npm ||
-            `https://www.npmjs.com/package/${pkg.name}`,
-          description: cleanContent(readme),
-          tag_list: pkg.keywords || [],
-          published_at:
-            pkg.date ||
-            new Date().toISOString(),
-          raw: {
-            search: pkg,
-            metadata: latest,
-          },
-        });
-      } catch (pkgErr) {
-        console.error(
-          "npm.package error:",
-          pkgErr.message
-        );
-      }
-    }
-
-    return results;
+      tags: pkg?.keywords || [],
+    }));
   } catch (err) {
     console.error("npm.fetch error:", err.message);
     return [];
