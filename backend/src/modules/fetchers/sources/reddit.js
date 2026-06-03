@@ -1,4 +1,7 @@
+import Parser from "rss-parser";
 import { extractBestContent } from "../../../utils/extractBestContent.js";
+
+const parser = new Parser();
 
 export default async function fetchReddit({
   topic = "node",
@@ -6,37 +9,61 @@ export default async function fetchReddit({
   try {
     const url = `https://www.reddit.com/r/${encodeURIComponent(
       topic
-    )}/hot.json?limit=5`;
+    )}/hot.rss`;
 
     const res = await fetch(url, {
       headers: {
-        "User-Agent": "content-fetcher/1.0",
+        "User-Agent":
+          "Mozilla/5.0 (compatible; FeedFetcher-Google; +http://www.google.com/feedfetcher.html)",
+
+        Accept:
+          "application/rss+xml, application/atom+xml, text/xml",
       },
     });
 
     if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
+      throw new Error(
+        `HTTP ${res.status} ${res.statusText}`
+      );
     }
 
-    const json = await res.json();
+    const xmlText = await res.text();
 
-    const posts = json?.data?.children || [];
+    const feed = await parser.parseString(xmlText);
 
-    return posts.map(({ data }) => ({
-      title: data.title,
+    const posts = feed.items || [];
 
-      url: `https://www.reddit.com${data.permalink}`,
+    return posts.slice(0, 5).map((item) => {
+      const textBody =
+        item.content ||
+        item.summary ||
+        item.contentSnippet ||
+        item.title ||
+        "";
 
-      description: extractBestContent(
-        data.selftext,
-        data.title
-      ),
+      return {
+        title: item.title,
 
-      score: data.score,
-      raw: data,
-    }));
+        url: item.link || "",
+
+        description: extractBestContent(
+          textBody,
+          item.contentSnippet,
+          item.summary,
+          item.title
+        ),
+
+        score: 0,
+
+        raw: item,
+      };
+    });
   } catch (err) {
-    console.error("reddit.fetch error:", err.message);
+    console.error(
+      "reddit.fetch error:",
+      err.message
+    );
+
     return [];
   }
 }

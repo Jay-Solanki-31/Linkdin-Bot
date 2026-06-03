@@ -63,15 +63,7 @@ export default function Dashboard() {
     },
   ]
 
-  const chartData = [
-    { name: "Mon", value: 12 },
-    { name: "Tue", value: 19 },
-    { name: "Wed", value: 15 },
-    { name: "Thu", value: 22 },
-    { name: "Fri", value: 18 },
-    { name: "Sat", value: 25 },
-    { name: "Sun", value: 21 },
-  ]
+  const chartData = data.chartData || []
 
   return (
     <div className="space-y-6">
