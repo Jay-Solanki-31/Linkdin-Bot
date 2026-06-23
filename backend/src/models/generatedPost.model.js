@@ -19,6 +19,7 @@ const GeneratedPostSchema = new mongoose.Schema({
   },
   slot: String,
   linkedinPostUrn: String,
+  linkedinPostUrl: String,
   postedAt: Date,
   error: {type: String},
   recoveryAttempts: {
@@ -59,6 +60,7 @@ GeneratedPostSchema.index(
 
 GeneratedPostSchema.index({ slot: 1, status: 1 });
 GeneratedPostSchema.index({ publishAt: 1 });
+GeneratedPostSchema.index({ status: 1, linkedinPostUrn: 1});
 
 
 export default mongoose.model("GeneratedPost", GeneratedPostSchema);

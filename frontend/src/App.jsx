@@ -4,6 +4,7 @@ import Dashboard from "./pages/Dashboard.jsx";
 import Fetcher from "./pages/Fetcher.jsx";
 import FetcherList from "./pages/FetcherList.jsx";
 import AIPosts from "./pages/AIPosts.jsx";
+import Analytics from "./pages/Analytics.jsx";
 import { Toaster } from "sonner";
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
             <Route path="/fetcher" element={<Fetcher />} />
             <Route path="/records" element={<FetcherList />} />
             <Route path="/posts" element={<AIPosts />} />
+            <Route path="/analytics" element={<Analytics />} />
             <Route path="*" element={<Dashboard />} />
           </Routes>
         </Layout>
