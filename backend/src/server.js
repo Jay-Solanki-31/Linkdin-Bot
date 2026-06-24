@@ -35,7 +35,8 @@ app.set("trust proxy", 1);
 
 app.use(express.json());
 const allowedOrigins = [
-  "https://your-frontend.vercel.app",
+  "http://localhost:5173",
+  "https://linkedin-contentbot-frontend.onrender.com",
   "chrome-extension://lahjodoejadpdgghopmfdbjcdgihjehe"
 ];
 

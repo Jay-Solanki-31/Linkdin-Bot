@@ -118,7 +118,7 @@ export default function Dashboard() {
             <GlassCardTitle className="text-lg">Fetch Trends</GlassCardTitle>
           </GlassCardHeader>
           <GlassCardContent>
-            <TrendChart data={chartData} title="Weekly Activity" />
+            <TrendChart data={chartData} title="Last 30 Days Activity" />
           </GlassCardContent>
         </GlassCard>
 

@@ -48,27 +48,25 @@ router.get("/", async (req, res) => {
 
     today.setHours(0, 0, 0, 0);
 
-    const startOfWeek = new Date();
+      const startDate = new Date();
 
-    const day = startOfWeek.getDay();
+      startDate.setDate(
+        startDate.getDate() - 29
+      );
 
-    const diff =
-      day === 0
-        ? -6
-        : 1 - day;
-
-    startOfWeek.setDate(
-      startOfWeek.getDate() + diff
-    );
-
-    startOfWeek.setHours(0, 0, 0, 0);
+      startDate.setHours(
+        0,
+        0,
+        0,
+        0
+      );
 
     const trends =
       await FetchedContent.aggregate([
         {
           $match: {
             createdAt: {
-              $gte: startOfWeek,
+              $gte: startDate,
             },
           },
         },
@@ -97,31 +95,34 @@ router.get("/", async (req, res) => {
 
     const chartData = [];
 
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(startOfWeek);
+    for (let i = 0; i < 30; i++) {
+      const date = new Date(startDate);
 
       date.setDate(
-        startOfWeek.getDate() + i
+        date.getDate() + i
       );
 
-      const key =
-        date.toISOString().split("T")[0];
-
-      const found = trends.find(
-        (item) => item._id === key
+          const key =
+      date.toLocaleDateString(
+        "en-CA"
       );
+
+      const found =
+        trends.find(
+          item => item._id === key
+        );
 
       chartData.push({
-        name:
-          date.toLocaleDateString(
-            "en-US",
-            {
-              weekday: "short",
-            }
-          ),
-
-        value: found?.count || 0,
+        name: date.toLocaleDateString(
+          "en-US",
+          {
+            month: "short",
+            day: "numeric"
+          }
+        ),
+        value: found?.count || 0
       });
+
     }
 
 
