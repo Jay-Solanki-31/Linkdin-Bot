@@ -17,40 +17,78 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.extend(isoWeek);
 
+function randomMinute() {
+  return Math.floor(Math.random() * 60);
+}
+
 /*
   Tuesday, Wednesday, Thursday
   10:00 and 18:00 IST
 */
-const SLOT_TIMES = [
-  { day: 2, hour: 10 },
-  { day: 2, hour: 18 },
-  { day: 3, hour: 10 },
-  { day: 3, hour: 18 },
-  { day: 4, hour: 10 },
-  { day: 4, hour: 18 },
+const SLOT_WINDOWS = [
+  {
+    day: 2,
+    startHour: 9,
+    endHour: 11,
+  },
+  {
+    day: 2,
+    startHour: 17,
+    endHour: 19,
+  },
+
+  {
+    day: 3,
+    startHour: 9,
+    endHour: 11,
+  },
+  {
+    day: 3,
+    startHour: 17,
+    endHour: 19,
+  },
+
+  {
+    day: 4,
+    startHour: 9,
+    endHour: 11,
+  },
+  {
+    day: 4,
+    startHour: 17,
+    endHour: 19,
+  },
 ];
 
 function generateFutureSlots(nowIST) {
-  const slots = SLOT_TIMES.map(({ day, hour }) => {
-    let slot = nowIST
-      .startOf("isoWeek") // Monday-based week
-      .add(day, "day")
-      .hour(hour)
-      .minute(0)
-      .second(0)
-      .millisecond(0);
+  const slots = SLOT_WINDOWS.map(
+    ({ day, startHour, endHour }) => {
 
-    // move to next week if already passed
-    if (slot.isBefore(nowIST)) {
-      slot = slot.add(1, "week");
-    }
+      const hour =
+        Math.floor(
+          Math.random() *
+          (endHour - startHour)
+        ) + startHour;
 
-    logger.info(
-      `Slot IST: ${slot.format()} | UTC: ${slot.utc().format()}`
-    );
+      let slot = nowIST
+        .startOf("isoWeek")
+        .add(day, "day")
+        .hour(hour)
+        .minute(randomMinute())
+        .second(0)
+        .millisecond(0);
 
-    return slot.utc().toDate(); // store in UTC
-  });
+      // move to next week if already passed
+      if (slot.isBefore(nowIST)) {
+        slot = slot.add(1, "week");
+      }
+
+      logger.info(
+        `Slot IST: ${slot.format()} | UTC: ${slot.utc().format()}`
+      );
+
+      return slot.utc().toDate(); // store in UTC
+    });
 
   return slots.sort((a, b) => a.getTime() - b.getTime());
 }
@@ -135,7 +173,7 @@ export default new Worker(
         ]);
 
         contents = [...contents, ...remaining];
-      } 
+      }
       if (!contents.length) {
         logger.info("No new content available");
         return;
@@ -165,13 +203,13 @@ export default new Worker(
           await aiQueue.add(
             JOB_TYPES.GENERATE_POST,
             { postId: post._id },
-            { 
+            {
               jobId: `ai-${post._id}`,
-              delay: i * 20000, 
+              delay: i * 20000,
               attempts: 3,
               backoff: {
                 type: 'exponential',
-                delay: 60000 
+                delay: 60000
               }
             }
           );
@@ -191,7 +229,7 @@ export default new Worker(
   {
     connection: redisConnection.connection,
     concurrency: 1,
-    lockDuration:60000,
-    stalledInterval:300000
+    lockDuration: 60000,
+    stalledInterval: 300000
   }
 );

@@ -26,11 +26,24 @@ const GeneratedPostSchema = new mongoose.Schema({
   type: Number,
   default: 0,
   },
-
   lastFailedAt: {
     type: Date,
   },
-
+  
+  promptType: {
+    type: String,
+    enum:[
+    "insight",
+    "contrarian",
+    "prediction",
+    "lessons"
+    ],
+    default: "insight"
+  },
+  sourceType: {
+    type: String,
+    default: "general",
+  },
   failedStage: {
     type: String,
   },
