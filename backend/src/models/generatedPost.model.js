@@ -66,10 +66,10 @@ GeneratedPostSchema.index(
   }
 );
 
-// GeneratedPostSchema.index(
-//   { expiresAt: 1 },
-//   { expireAfterSeconds: 0 }
-// );
+GeneratedPostSchema.index(
+  { expiresAt: 1 },
+  { expireAfterSeconds: 0 }
+);
 
 GeneratedPostSchema.index({ slot: 1, status: 1 });
 GeneratedPostSchema.index({ publishAt: 1 });
