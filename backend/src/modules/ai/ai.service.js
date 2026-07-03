@@ -1,5 +1,8 @@
 import generateAIResponse from "../../services/groq.js";
 import logger from "../../utils/logger.js";
+import prompts from "../../prompts/index.js";
+import sourceMap from "../../prompts/sourceMap.js";
+import { detectSourceType } from "../../utils/contentClassifier.js";
 
 const clamp = (str = "", max = 600) =>
   String(str)
@@ -14,84 +17,82 @@ class AIService {
       throw new Error("AIService: empty content");
     }
 
+    const sourceType = detectSourceType(url);
+
+    const availablePromptTypes = sourceMap[sourceType] || sourceMap.general;
+
+    const promptType =
+      availablePromptTypes[
+      Math.floor(Math.random() * availablePromptTypes.length)
+      ];
+
+const systemPrompt =
+  prompts[promptType] || prompts.insight;
+  
     const safeTitle = clamp(title, 180);
     const safeDesc = clamp(description, 600);
     const safeSource = clamp(source, 50);
 
     const prompt = `
-You are reading raw developer content scraped from the internet.
+You are analyzing developer content collected from technical communities.
 
-Your task:
-1. Detect the REAL engineering problem
-2. Ignore SEO fluff and filler text
-3. Identify the technical pain point
-4. Find the engineering lesson
-5. Create a funny technical LinkedIn post
+Your job:
 
-SOURCE:
+* Understand the core idea.
+* Identify engineering implications.
+* Identify tradeoffs, lessons, or interesting opinions.
+* Ignore SEO content, marketing language, and filler text.
+* Focus on what developers actually care about.
+
+CONTENT SOURCE:
 ${safeSource || "Developer Community"}
 
 TITLE:
 ${safeTitle}
 
-RAW CONTENT:
+CONTENT:
 ${safeDesc || "No additional context provided."}
 
-POST GOALS:
-- Grab attention in the first 2 lines
-- Make developers relate emotionally
-- Include subtle engineering humor
-- Mention one useful technical insight
-- Keep readers scrolling until the end
-- Sound human and experienced
-- Keep it concise
-
-STYLE EXAMPLES:
-- "No errors. Just vibes."
-- "Works locally. Production disagreed."
-- "The retry logic was basically emotional support for the database."
-- "Distributed systems are computers blaming each other."
-
 IMPORTANT:
-- No corporate tone
-- No motivational content
-- No hashtags
-- No clickbait
-- No generic summaries
-- No "This highlights the importance..."
-- No "In today's tech world..."
-- No AI-sounding phrasing
 
-STRUCTURE:
-1. Strong hook
-2. Developer pain
-3. Technical insight
-4. Funny observation
-5. Real takeaway
+* Do not summarize the article.
+* Do not rewrite the article.
+* Focus on the most interesting insight.
+* Think like an experienced engineer.
+* Use the style and structure defined in the system prompt.
+* Generate an original LinkedIn post inspired by the content.
 
 OUTPUT:
 Plain LinkedIn post only.
 `;
 
     try {
-      let text = await generateAIResponse(prompt);
-
-      if (!text) {
+      const result = await generateAIResponse({
+        prompt,
+        systemPrompt,
+        promptType,
+      });
+      if (!result?.text) {
         throw new Error("Empty AI response");
       }
 
-      text = text
-        .replace(/```[\s\S]*?```/g, "")
+      const cleanedText = result.text
+        .replace(/`[\s\S]*?`/g, "")
         .replace(/^["'\s]+|["'\s]+$/g, "")
         .replace(/^(Post:|LinkedIn Post:)/i, "")
         .replace(/\n{3,}/g, "\n\n")
         .trim();
 
-      if (text.length < 40) {
+      if (cleanedText.length < 40) {
         throw new Error("AI output too short");
       }
 
-      return text;
+      return {
+        text: cleanedText,
+        promptType: result.promptType,
+        sourceType,
+      };
+
     } catch (err) {
       logger.error(
         "Groq AI Processing Error:",

@@ -36,10 +36,10 @@ const worker = new Worker(
         }
       );
 
-    if (!post) {
-      logger.warn(`Post not eligible for AI generation: ${postId}`);
-      return;
-    }
+      if (!post) {
+        logger.warn(`Post not eligible for AI generation: ${postId}`);
+        return;
+      }
 
       const content = await FetchedContent.findById(post.articleId);
 
@@ -49,11 +49,17 @@ const worker = new Worker(
 
       // throw new Error("TEST_RETRY");
 
-      const text = await aiService.generateForContent(content);
-      logger.info(`Generated text for postId: ${postId}`);
+      const result =
+        await aiService.generateForContent(content);
+
+      logger.info(
+        `Generated text for postId: ${postId}`
+      );
 
       post.status = "queued";
-      post.text = text;
+      post.text = result.text;
+      post.promptType = result.promptType;
+      post.sourceType = result.sourceType;
       post.title = content.title;
       post.url = content.url;
 
@@ -120,11 +126,11 @@ worker.on("failed", async (job, err) => {
     );
 
     await GeneratedPost.findByIdAndUpdate(postId, {
-    status: "failed",
-    error: err.message,
-    failedStage: "ai",
-    lastFailedAt: new Date(),
-  });
+      status: "failed",
+      error: err.message,
+      failedStage: "ai",
+      lastFailedAt: new Date(),
+    });
   } catch (e) {
     logger.error(`DLQ push failed: ${e.message}`);
   }

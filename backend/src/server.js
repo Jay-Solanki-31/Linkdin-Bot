@@ -18,6 +18,7 @@ import aiPostsRoutes from "./routes/aiPosts.routes.js";
 import publisherRoutes from "./routes/publisher.routes.js";
 import slotAllocatorRoutes from "./routes/slotAllocator.routes.js";
 import testRoutes from "./routes/test.routes.js";
+import analyticsRoutes from "./routes/analytics.routes.js";
 
 import bullBoard from "./dashboard/bullboard.js";
 import dashboardAuth from "./middleware/bullmq.middleware.js";
@@ -33,12 +34,42 @@ const app = express();
 app.set("trust proxy", 1);
 
 app.use(express.json());
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://linkedin-contentbot-frontend.onrender.com",
+  "chrome-extension://lahjodoejadpdgghopmfdbjcdgihjehe"
+];
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_ORIGIN,
-    credentials: true,
+    origin: (
+      origin,
+      callback
+    ) => {
+
+      if (
+        !origin ||
+        allowedOrigins.includes(
+          origin
+        )
+      ) {
+        return callback(
+          null,
+          true
+        );
+      }
+
+      callback(
+        new Error(
+          "Not allowed by CORS"
+        )
+      );
+
+    },
+    credentials: true
   })
 );
+
 app.use(
   session({
     name: "linkedin-bot-session",
@@ -70,6 +101,7 @@ app.use("/api/ai-posts", aiPostsRoutes);
 app.use("/api/publisher", publisherRoutes);
 app.use("/admin/queues", dashboardAuth, bullBoard.getRouter());
 app.use("/api/slot-allocator", slotAllocatorRoutes);
+app.use("/api/analytics",analyticsRoutes);
 app.use("/test", testRoutes);
 
 if (process.env.ENABLE_BULL_BOARD === "true") {

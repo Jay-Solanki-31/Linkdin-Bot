@@ -6,6 +6,7 @@ import {
   Zap,
   ChevronLeft,
   ChevronRight,
+  BarChart3,
 } from "lucide-react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
@@ -18,6 +19,7 @@ export default function Sidebar() {
     { label: "Fetcher", path: "/fetcher", icon: Download },
     { label: "Records", path: "/records", icon: FileText },
     { label: "AI Posts", path: "/posts", icon: Zap },
+    { label: "Analytics", path: "/analytics", icon: BarChart3 }
   ]
 
   return (

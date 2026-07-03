@@ -48,6 +48,7 @@ export default new Worker(
         $set: {
           status: "posted",
           linkedinPostUrn: urn,
+          linkedinPostUrl:`https://www.linkedin.com/feed/update/${urn}/`,
           error: null,
           postedAt: new Date(),
           expiresAt: new Date(
