@@ -37,7 +37,7 @@ app.use(express.json());
 const allowedOrigins = [
   "http://localhost:5173",
   "https://linkedin-contentbot-frontend.onrender.com",
-  "chrome-extension://lahjodoejadpdgghopmfdbjcdgihjehe"
+  "chrome-extension://hiognlmnbdoiicbdigfonpfpoicoijaj"
 ];
 
 app.use(
