@@ -60,10 +60,17 @@ router.put("/:id", async (req, res) => {
         .json({ success: false, message: "Post not found" });
     }
 
-    if (["posted", "queued"].includes(post.status)) {
+    if (post.status === "posted") {
       return res.status(400).json({
         success: false,
-        message: "This post cannot be edited right now",
+        message: "Published posts cannot be edited",
+      });
+    }
+
+    if (post.status !== "queued") {
+      return res.status(400).json({
+        success: false,
+        message: "Only queued posts can be edited",
       });
     }
 
