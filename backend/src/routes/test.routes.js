@@ -4,6 +4,7 @@ import GeneratedPost from "../models/generatedPost.model.js";
 import { addAIJob } from "../queue/ai.queue.js";
 import { enqueueSlotAllocation } from "../queue/slotAllocator.queue.js";
 import { enqueueLinkedInPost } from "../queue/linkedin.queue.js";
+import imageGenerator from "../services/imageGenerator.js";
 import logger from "../utils/logger.js";
 
 const router = Router();
@@ -202,6 +203,28 @@ router.get("/content-status", async (req, res) => {
       success: true,
       summary,
       content,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
+
+// Test image generation
+router.post("/test-image", async (req, res) => {
+  try {
+    const prompt =
+      "Modern AI developer workspace with holographic code editor, cyberpunk style";
+
+    const result = await imageGenerator.generate(prompt);
+    console.log('result', result)
+
+    res.json({
+      success: true,
+      prompt,
+      result,
     });
   } catch (err) {
     res.status(500).json({
