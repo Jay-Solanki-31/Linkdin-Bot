@@ -51,11 +51,18 @@ export default async function generateAIResponse({
       throw new Error("Groq returned empty content");
     }
 
-    content = content
-      .replace(/^```json/i, "")
+    content = String(content)
+      .replace(/^```json\s*/i, "")
       .replace(/^```/i, "")
       .replace(/```$/i, "")
       .trim();
+
+    const firstBrace = content.indexOf("{");
+    const lastBrace = content.lastIndexOf("}");
+
+    if (firstBrace >= 0 && lastBrace > firstBrace) {
+      content = content.slice(firstBrace, lastBrace + 1).trim();
+    }
 
     return {
       text: content,

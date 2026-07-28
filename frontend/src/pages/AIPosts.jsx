@@ -10,13 +10,33 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { AnimatedNumber } from "@/components/ui/animated-number"
+
+function ImagePreview({ src, className = "", label = "No Image" }) {
+  const [hasError, setHasError] = useState(false)
+
+  if (!src || hasError) {
+    return (
+      <div className={"flex h-20 w-20 items-center justify-center rounded-md border border-dashed border-border bg-muted text-center text-[11px] text-muted-foreground " + className}>
+        {label}
+      </div>
+    )
+  }
+
+  return (
+    <img
+      src={src}
+      alt="Generated"
+      className={"h-20 w-20 rounded-md object-cover " + className}
+      onError={() => setHasError(true)}
+    />
+  )
+}
 
 export default function AIPosts() {
   const [posts, setPosts] = useState([])
@@ -124,6 +144,7 @@ export default function AIPosts() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Title</TableHead>
+                      <TableHead>Image</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Publish At</TableHead>
                       <TableHead>Created</TableHead>
@@ -141,6 +162,10 @@ export default function AIPosts() {
                       >
                         <TableCell className="max-w-xs truncate font-medium">
                           {post.title}
+                        </TableCell>
+
+                        <TableCell className="py-3">
+                          <ImagePreview src={post.imageUrl || post.imagePath} />
                         </TableCell>
 
                         <TableCell>
@@ -288,12 +313,14 @@ function AIPostModal({ post, initialEditing = false, onClose, onUpdated }) {
   const [title, setTitle] = useState(post.title || "")
   const [text, setText] = useState(post.text || "")
   const [saving, setSaving] = useState(false)
+  const [imageError, setImageError] = useState(false)
 
   useEffect(() => {
     setTitle(post.title || "")
     setText(post.text || "")
     setIsEditing(initialEditing)
-  }, [post._id, post.title, post.text, initialEditing])
+    setImageError(false)
+  }, [post._id, post.title, post.text, post.imageUrl, post.imagePath, initialEditing])
 
   const handleSave = async () => {
     if (!title.trim() || !text.trim()) {
@@ -338,6 +365,21 @@ function AIPostModal({ post, initialEditing = false, onClose, onUpdated }) {
         </div>
 
         <div className="p-6 space-y-4 overflow-y-auto">
+          {(post.imageUrl || post.imagePath) && !imageError ? (
+            <div className="overflow-hidden rounded-xl border border-border bg-muted">
+              <img
+                src={post.imageUrl || post.imagePath}
+                alt="Generated preview"
+                className="w-full max-h-80 object-contain"
+                onError={() => setImageError(true)}
+              />
+            </div>
+          ) : (
+            <div className="flex h-48 items-center justify-center rounded-xl border border-dashed border-border bg-muted text-sm text-muted-foreground">
+              No Image
+            </div>
+          )}
+
           {isEditing ? (
             <div className="space-y-4">
               <div className="space-y-2">

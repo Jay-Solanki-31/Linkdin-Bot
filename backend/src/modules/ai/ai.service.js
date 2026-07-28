@@ -94,8 +94,16 @@ Requirements:
 
       try {
         parsed = JSON.parse(result.text);
-      } catch {
-        throw new Error("AI returned invalid JSON");
+      } catch (parseError) {
+        const cleaned = String(result.text)
+          .replace(/^[^\{\[]*/s, "")
+          .replace(/[^\}\]]*$/s, "")
+          .trim();
+        try {
+          parsed = JSON.parse(cleaned);
+        } catch {
+          throw new Error("AI returned invalid JSON");
+        }
       }
 
       const cleanedPost = parsed.post
