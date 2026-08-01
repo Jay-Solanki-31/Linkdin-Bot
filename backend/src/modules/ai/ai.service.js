@@ -1,5 +1,4 @@
 import generateAIResponse from "../../services/groq.js";
-import logger from "../../utils/logger.js";
 import prompts from "../../prompts/index.js";
 import sourceMap from "../../prompts/sourceMap.js";
 import { detectSourceType } from "../../utils/contentClassifier.js";
@@ -21,14 +20,12 @@ class AIService {
 
     const availablePromptTypes = sourceMap[sourceType] || sourceMap.general;
 
-    const promptType =
-      availablePromptTypes[
+    const promptType = availablePromptTypes[
       Math.floor(Math.random() * availablePromptTypes.length)
-      ];
+    ];
 
-const systemPrompt =
-  prompts[promptType] || prompts.insight;
-  
+    const systemPrompt = prompts[promptType] || prompts.insight;
+
     const safeTitle = clamp(title, 180);
     const safeDesc = clamp(description, 600);
     const safeSource = clamp(source, 50);
@@ -62,9 +59,25 @@ IMPORTANT:
 * Use the style and structure defined in the system prompt.
 * Generate an original LinkedIn post inspired by the content.
 
-OUTPUT:
-Plain LinkedIn post only.
-`;
+OUTPUT
+
+Return ONLY valid JSON.
+
+The JSON must exactly follow this schema:
+
+{
+  "post": "string",
+  "imagePrompt": "string"
+}
+
+Requirements:
+
+- Do not wrap the JSON in Markdown.
+- Do not use code fences.
+- Do not include explanations.
+- Do not include any text before or after the JSON.
+- "post" must contain the complete LinkedIn post.
+- "imagePrompt" must describe a professional illustration inspired by the post.`;
 
     try {
       const result = await generateAIResponse({
@@ -72,34 +85,55 @@ Plain LinkedIn post only.
         systemPrompt,
         promptType,
       });
+
       if (!result?.text) {
         throw new Error("Empty AI response");
       }
 
-      const cleanedText = result.text
-        .replace(/`[\s\S]*?`/g, "")
-        .replace(/^["'\s]+|["'\s]+$/g, "")
-        .replace(/^(Post:|LinkedIn Post:)/i, "")
-        .replace(/\n{3,}/g, "\n\n")
+      let parsed;
+
+      try {
+        parsed = JSON.parse(result.text);
+      } catch (parseError) {
+        const cleaned = String(result.text)
+          .replace(/^[^\{\[]*/s, "")
+          .replace(/[^\}\]]*$/s, "")
+          .trim();
+        try {
+          parsed = JSON.parse(cleaned);
+        } catch {
+          throw new Error("AI returned invalid JSON");
+        }
+      }
+
+      const cleanedPost = parsed.post
+        ?.replace(/\n{3,}/g, "\n\n")
         .trim();
 
-      if (cleanedText.length < 40) {
-        throw new Error("AI output too short");
+      const cleanedImagePrompt = parsed.imagePrompt?.trim();
+
+      if (!cleanedPost || cleanedPost.length < 40) {
+        throw new Error("Invalid LinkedIn post");
+      }
+
+      if (!cleanedImagePrompt || cleanedImagePrompt.length < 20) {
+        throw new Error("Invalid image prompt");
       }
 
       return {
-        text: cleanedText,
+        text: cleanedPost,
+        imagePrompt: cleanedImagePrompt,
         promptType: result.promptType,
         sourceType,
       };
-
     } catch (err) {
-      logger.error(
-        "Groq AI Processing Error:",
-        err?.message || err
-      );
+      const message = err instanceof Error ? err.message : String(err);
 
-      throw err;
+      if (message === "AI returned invalid JSON") {
+        throw err;
+      }
+
+      throw new Error(`Groq request failed: ${message}`);
     }
   }
 }

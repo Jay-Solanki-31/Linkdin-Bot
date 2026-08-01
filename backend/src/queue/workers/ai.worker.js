@@ -1,6 +1,7 @@
 import { Worker } from "bullmq";
 import { redisConnection } from "../connection.js";
 import aiService from "../../modules/ai/ai.service.js";
+import imageGenerator from "../../services/imageGenerator.js";
 
 import GeneratedPost from "../../models/generatedPost.model.js";
 import FetchedContent from "../../models/fetchedContent.model.js";
@@ -16,10 +17,11 @@ const worker = new Worker(
   "ai-processing-queue",
   async (job) => {
     const { postId } = job.data;
+    const currentAttempt = (job.attemptsMade ?? 0) + 1;
+    const totalAttempts = job.opts?.attempts ?? 1;
 
     try {
-
-      logger.info(`Processing AI job for postId: ${postId}`);
+      logger.info(`[AI] Processing ${postId} (Attempt ${currentAttempt}/${totalAttempts})`);
 
       const post = await GeneratedPost.findOneAndUpdate(
         {
@@ -29,6 +31,8 @@ const worker = new Worker(
         {
           $set: {
             status: "generating",
+            error: null,
+            failedStage: null,
           },
         },
         {
@@ -37,7 +41,7 @@ const worker = new Worker(
       );
 
       if (!post) {
-        logger.warn(`Post not eligible for AI generation: ${postId}`);
+        logger.warn(`[AI] Post not eligible for AI generation: ${postId}`);
         return;
       }
 
@@ -47,17 +51,26 @@ const worker = new Worker(
         throw new Error("Content not found");
       }
 
-      // throw new Error("TEST_RETRY");
+      const result = await aiService.generateForContent(content);
 
-      const result =
-        await aiService.generateForContent(content);
+      logger.info("[AI] Text generated");
+      logger.info("[AI] Generating image");
 
-      logger.info(
-        `Generated text for postId: ${postId}`
-      );
+      const image = await imageGenerator.generate(result.imagePrompt, postId);
+
+      logger.info("[AI] Image generated");
 
       post.status = "queued";
+      post.error = null;
+      post.failedStage = null;
+      post.lastFailedAt = null;
       post.text = result.text;
+
+      post.imagePrompt = result.imagePrompt;
+      post.imagePath = image.imagePath;
+
+      post.imageUrl = "";
+      post.imageStatus = "generated";
       post.promptType = result.promptType;
       post.sourceType = result.sourceType;
       post.title = content.title;
@@ -65,10 +78,7 @@ const worker = new Worker(
 
       await post.save();
 
-      const delay = Math.max(
-        new Date(post.publishAt).getTime() - Date.now(),
-        0
-      );
+      const delay = Math.max(new Date(post.publishAt).getTime() - Date.now(), 0);
 
       await linkedinQueue.add(
         JOB_TYPES.POST_TO_LINKEDIN,
@@ -79,19 +89,23 @@ const worker = new Worker(
         }
       );
 
-      logger.info(`AI job completed for ${postId}`);
-
+      logger.info("[AI] Completed");
     } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
 
-      logger.error(`AI job failed: ${err.message}`);
+      logger.error(
+        `[AI] ${postId} failed (Attempt ${currentAttempt}/${totalAttempts}): ${message}`
+      );
 
-      if (job.attemptsMade + 1 < job.opts.attempts) {
-
+      if (currentAttempt < totalAttempts) {
         await GeneratedPost.findByIdAndUpdate(postId, {
-          status: "draft",
-          error: err.message,
+          $set: {
+            status: "draft",
+            error: message,
+            failedStage: "ai",
+            lastFailedAt: new Date(),
+          },
         });
-
       }
 
       throw err;
@@ -108,8 +122,6 @@ worker.on("failed", async (job, err) => {
   }
 
   const { postId } = job.data;
-
-  logger.error(`DLQ triggered for ${postId}`);
 
   try {
     await aiDLQ.add(
@@ -132,7 +144,7 @@ worker.on("failed", async (job, err) => {
       lastFailedAt: new Date(),
     });
   } catch (e) {
-    logger.error(`DLQ push failed: ${e.message}`);
+    logger.error(`[AI] ${postId} DLQ push failed: ${e.message}`);
   }
 });
 

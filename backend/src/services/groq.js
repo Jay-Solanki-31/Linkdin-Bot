@@ -31,9 +31,9 @@ export default async function generateAIResponse({
           },
         ],
 
-        temperature: 0.9,
+        temperature: 0.7,
         top_p: 0.95,
-        max_tokens: 400,
+        max_tokens: 700,
       },
       {
         timeout: 20000,
@@ -45,28 +45,32 @@ export default async function generateAIResponse({
       }
     );
 
-    const text =
-      data?.choices?.[0]?.message?.content;
+    let content = data?.choices?.[0]?.message?.content;
 
-    if (!text) {
-      throw new Error(
-        "Groq returned empty content"
-      );
+    if (content === null || content === undefined || String(content).trim() === "") {
+      throw new Error("Groq returned empty content");
+    }
+
+    content = String(content)
+      .replace(/^```json\s*/i, "")
+      .replace(/^```/i, "")
+      .replace(/```$/i, "")
+      .trim();
+
+    const firstBrace = content.indexOf("{");
+    const lastBrace = content.lastIndexOf("}");
+
+    if (firstBrace >= 0 && lastBrace > firstBrace) {
+      content = content.slice(firstBrace, lastBrace + 1).trim();
     }
 
     return {
-      text: text.trim(),
+      text: content,
       promptType,
     };
-
   } catch (err) {
-    const errorMessage =
-      err?.response?.data?.error?.message ||
-      err.message;
+    const errorMessage = err?.response?.data?.error?.message || err.message;
 
-    throw new Error(
-      `Groq request failed: ${errorMessage}`
-    );
-
+    throw new Error(`Groq request failed: ${errorMessage}`);
   }
 }

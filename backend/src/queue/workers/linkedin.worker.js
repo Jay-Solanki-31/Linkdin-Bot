@@ -34,8 +34,8 @@ export default new Worker(
 
       const result = await publishToLinkedIn({
         text: post.text,
+        imagePath: post.imagePath,
         url: post.url,
-        title: post.title,
       });
 
       const urn = result?.urn;
@@ -49,12 +49,14 @@ export default new Worker(
           status: "posted",
           linkedinPostUrn: urn,
           linkedinPostUrl:`https://www.linkedin.com/feed/update/${urn}/`,
+          imageStatus: "uploaded",
           error: null,
           postedAt: new Date(),
           expiresAt: new Date(
             Date.now() + 7 * 24 * 60 * 60 * 1000
           )
         },
+         $unset:{imagePath:"", imagePrompt:""}
       });
 
       logger.info(`Post successfully published: ${postId} → ${urn}`);

@@ -1,10 +1,34 @@
 import express from "express";
+import fs from "fs";
+import path from "path";
 import GeneratedPost from "../models/generatedPost.model.js";
 import { linkedinQueue } from "../queue/linkedin.queue.js";
 import logger from "../utils/logger.js";
 
-
 const router = express.Router();
+
+const getImageUrl = (req, imagePath) => {
+  if (!imagePath || typeof imagePath !== "string") {
+    return null;
+  }
+
+  if (/^https?:\/\//.test(imagePath)) {
+    return imagePath;
+  }
+
+  const normalized = imagePath.replace(/\\/g, "/");
+  const uploadsIndex = normalized.indexOf("/uploads/");
+  const pathPart = uploadsIndex >= 0
+    ? normalized.substring(uploadsIndex)
+    : `/${path.relative(process.cwd(), imagePath).replace(/\\/g, "/")}`;
+
+  if (!req || !req.protocol || !req.get) {
+    return pathPart;
+  }
+
+  const host = req.get("host");
+  return `${req.protocol}://${host}${pathPart}`;
+};
 
 router.get("/", async (req, res) => {
   try {
@@ -30,9 +54,11 @@ router.get("/", async (req, res) => {
         url: post.url,
         status: post.status,
         attempts: post.attempts,
-        publishAt: post.publishAt,   
+        publishAt: post.publishAt,
         createdAt: post.createdAt,
         updatedAt: post.updatedAt,
+        imagePath: post.imagePath,
+        imageUrl: getImageUrl(req, post.imagePath),
       })),
       pagination: {
         page,
@@ -60,10 +86,17 @@ router.put("/:id", async (req, res) => {
         .json({ success: false, message: "Post not found" });
     }
 
-    if (["posted", "queued"].includes(post.status)) {
+    if (post.status === "posted") {
       return res.status(400).json({
         success: false,
-        message: "This post cannot be edited right now",
+        message: "Published posts cannot be edited",
+      });
+    }
+
+    if (post.status !== "queued") {
+      return res.status(400).json({
+        success: false,
+        message: "Only queued posts can be edited",
       });
     }
 
@@ -113,6 +146,15 @@ router.delete("/:id", async (req, res) => {
       await job.remove();
 
       logger.info(`Removed BullMQ job for post ${id}`);
+    }
+
+    if (post.imagePath && fs.existsSync(post.imagePath)) {
+      try {
+        fs.unlinkSync(post.imagePath);
+        logger.info(`Deleted image file for post ${id}: ${post.imagePath}`);
+      } catch (err) {
+        logger.warn(`Failed to delete image file for post ${id}: ${err.message}`);
+      }
     }
 
     await post.deleteOne();

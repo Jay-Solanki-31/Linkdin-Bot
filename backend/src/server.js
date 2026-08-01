@@ -1,5 +1,6 @@
 import express from "express";
 import dotenv from "dotenv";
+import path from "path";
 import session from "express-session";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.js";
@@ -34,6 +35,7 @@ const app = express();
 app.set("trust proxy", 1);
 
 app.use(express.json());
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 const allowedOrigins = [
   "http://localhost:5173",
   "https://linkedin-contentbot-frontend.onrender.com",

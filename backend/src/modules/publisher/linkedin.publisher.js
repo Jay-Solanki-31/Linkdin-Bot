@@ -1,3 +1,4 @@
+import fs from "fs";
 import axios from "axios";
 import LinkedInToken from "../../models/linkedinToken.model.js";
 import logger from "../../utils/logger.js";
@@ -5,85 +6,178 @@ import logger from "../../utils/logger.js";
 async function getTokenRecord() {
   const token = await LinkedInToken.findById("linkedin_app_token");
 
-  if (!token?.accessToken) throw new Error("LinkedIn not connected");
-  if (!token?.memberUrn) throw new Error("LinkedIn member URN missing");
+  if (!token?.accessToken) {
+    throw new Error("LinkedIn not connected");
+  }
+
+  if (!token?.memberUrn) {
+    throw new Error("LinkedIn member URN missing");
+  }
 
   return token;
 }
 
-export async function publishToLinkedIn({ text, url, title }) {
-  if (!text || text.length < 10) {
-    throw new Error("Invalid post text");
-  }
+async function initializeImageUpload(accessToken, owner) {
+  const response = await axios.post(
+    "https://api.linkedin.com/rest/images?action=initializeUpload",
+    {
+      initializeUploadRequest: {
+        owner,
+      },
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "LinkedIn-Version": "202511",
+        "X-Restli-Protocol-Version": "2.0.0",
+        "Content-Type": "application/json",
+      },
+    }
+  );
 
-  if (!url) {
-    throw new Error("URL is required for article share post");
-  }
+  const value = response.data.value;
 
-  const { accessToken, memberUrn: author } = await getTokenRecord();
+  return {
+    imageUrn: value.image,
+    uploadUrl: value.uploadUrl,
+  };
+}
 
-  // Keep caption clean & readable
-  const safeText =
-    text.length > 1300 ? text.slice(0, 1290) + "..." : text;
+async function uploadImage(uploadUrl, imagePath) {
+  const file = fs.readFileSync(imagePath);
 
+  await axios.put(uploadUrl, file, {
+    headers: {
+      "Content-Type": "application/octet-stream",
+    },
+    timeout: 60000,
+    maxBodyLength: Infinity,
+  });
+}
+
+async function createPost(
+  accessToken,
+  owner,
+  text,
+  imageUrn
+) {
   const payload = {
-    author,
-    commentary: safeText,
+    author: owner,
+
+    commentary: text,
+
     visibility: "PUBLIC",
+
     distribution: {
       feedDistribution: "MAIN_FEED",
       targetEntities: [],
       thirdPartyDistributionChannels: [],
     },
+
     lifecycleState: "PUBLISHED",
 
     content: {
-      article: {
-        source: url,
-        title: title || "Read more",
+      media: {
+        id: imageUrn,
       },
     },
   };
 
- try {
   const response = await axios.post(
     "https://api.linkedin.com/rest/posts",
     payload,
     {
-      timeout: 15000,
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        "X-Restli-Protocol-Version": "2.0.0",
         "LinkedIn-Version": "202511",
+        "X-Restli-Protocol-Version": "2.0.0",
+        "Content-Type": "application/json",
       },
-      validateStatus: (status) => status < 500, 
     }
   );
 
-  if (response.status !== 201) {
-    logger.error("Unexpected LinkedIn status:", response.status);
-    logger.error("Response body:", response.data);
-    throw new Error("LinkedIn post creation failed");
-  }
-
-  const urn = response.headers["x-restli-id"];
-
-  if (!urn) {
-    logger.error("LinkedIn headers:", response.headers);
-    throw new Error("LinkedIn did not return a post URN");
-  }
-
-  logger.info(`LinkedIn Post Success: ${urn}`);
-
-  return { ok: true, urn };
-
-} catch (err) {
-  logger.error(
-    "LinkedIn publish failed",
-    err?.response?.data || err.message
-  );
-  throw err;
+  return response.headers["x-restli-id"];
 }
 
+export async function publishToLinkedIn({
+  text,
+  imagePath,
+  url,
+}) {
+  if (!text) {
+    throw new Error("Missing text");
+  }
+
+  if (!imagePath) {
+    throw new Error("Missing image");
+  }
+
+  if (!fs.existsSync(imagePath)) {
+    throw new Error(`Image not found: ${imagePath}`);
+  }
+
+  const footer = url
+    ? `
+    
+--------------------
+
+📖 Want to dive deeper?
+
+Original source:
+${url}`
+    : "";
+
+  const finalText = ( text + footer).trim();
+
+  const safeText =
+    finalText.length > 3000
+      ? finalText.slice(0, 2997) + "..."
+      : finalText;
+
+  const {
+    accessToken,
+    memberUrn,
+  } = await getTokenRecord();
+
+  logger.info("Initializing LinkedIn image upload...");
+
+  const {
+    imageUrn,
+    uploadUrl,
+  } = await initializeImageUpload(
+    accessToken,
+    memberUrn
+  );
+
+  logger.info(`Image URN: ${imageUrn}`);
+
+  logger.info("Uploading image...");
+
+  await uploadImage(uploadUrl, imagePath);
+
+  logger.info("Creating LinkedIn post...");
+
+  const postUrn = await createPost(
+    accessToken,
+    memberUrn,
+    safeText,
+    imageUrn
+  );
+
+  logger.info(`LinkedIn post created: ${postUrn}`);
+
+  if (imagePath) {
+    fs.unlink(imagePath, (err) => {
+      if (err) {
+        logger.warn(`Failed to delete image ${imagePath} : ${err.message}`);
+      } else {
+        logger.info(`Deleted image ${imagePath}`);
+      }
+    });
+  }
+
+  return {
+    ok: true,
+    urn: postUrn,
+  };
 }

@@ -9,6 +9,31 @@ const GeneratedPostSchema = new mongoose.Schema({
 
   title: { type: String, default: "" },
   text: { type: String },
+  imagePrompt: {
+    type: String,
+    default: ""
+  },
+
+  imagePath: {
+    type: String,
+    default: ""
+  },
+
+  imageUrl: {
+    type: String,
+    default: ""
+  },
+
+  imageStatus: {
+    type: String,
+    enum: [
+      "pending",
+      "generated",
+      "uploaded",
+      "failed"
+    ],
+    default: "pending"
+  },
   url: { type: String },
   source: { type: String },
   status: {
