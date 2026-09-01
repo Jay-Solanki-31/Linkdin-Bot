@@ -12,15 +12,19 @@ export function detectSourceType(url) {
     if (value.includes("npmjs.com"))
         return "npm";
 
-    if (
-        value.includes("dev.to") ||
-        value.includes("medium.com")
-    )
-        return "article";
+    if (value.includes("dev.to"))
+        return "devto";
 
-    if (
-        value.includes("nodeweekly.com")
-    )
+    if (value.includes("medium.com"))
+        return "medium";
+
+    if (value.includes("hashnode.com"))
+        return "hashnode";
+
+    if (value.includes("news.ycombinator.com"))
+        return "hackernews";
+
+    if (value.includes("nodeweekly.com"))
         return "newsletter";
 
     return "general";
