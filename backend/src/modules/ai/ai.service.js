@@ -16,7 +16,7 @@ class AIService {
       throw new Error("AIService: empty content");
     }
 
-    const sourceType = detectSourceType(url);
+    const sourceType = source === "hackernews" ? "hackernews" : detectSourceType(url);
 
     const availablePromptTypes = sourceMap[sourceType] || sourceMap.general;
 
@@ -27,7 +27,7 @@ class AIService {
     const systemPrompt = prompts[promptType] || prompts.insight;
 
     const safeTitle = clamp(title, 180);
-    const safeDesc = clamp(description, 600);
+    const safeDesc = clamp(description, source === "hackernews" ? 1800 : 600);
     const safeSource = clamp(source, 50);
 
     const prompt = `

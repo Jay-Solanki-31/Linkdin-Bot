@@ -9,9 +9,6 @@ export function detectSourceType(url) {
     if (value.includes("github.com"))
         return "github";
 
-    if (value.includes("npmjs.com"))
-        return "npm";
-
     if (value.includes("dev.to"))
         return "devto";
 

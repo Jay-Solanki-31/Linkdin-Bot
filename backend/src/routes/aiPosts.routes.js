@@ -36,14 +36,27 @@ router.get("/", async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit) || 10, 50);
     const skip = (page - 1) * limit;
 
-    const [items, total] = await Promise.all([
+    const [items, total, statusCounts] = await Promise.all([
       GeneratedPost.find()
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .populate("articleId", "title source"),
       GeneratedPost.countDocuments(),
+      GeneratedPost.aggregate([
+        {
+          $group: {
+            _id: "$status",
+            count: { $sum: 1 },
+          },
+        },
+      ]),
     ]);
+
+    const counts = statusCounts.reduce(
+      (result, entry) => ({ ...result, [entry._id]: entry.count }),
+      { posted: 0, queued: 0, failed: 0 }
+    );
 
     res.json({
       data: items.map((post) => ({
@@ -66,6 +79,7 @@ router.get("/", async (req, res) => {
         total,
         totalPages: Math.ceil(total / limit),
       },
+      statusCounts: counts,
     });
   } catch (err) {
     console.error("AI Posts error:", err);

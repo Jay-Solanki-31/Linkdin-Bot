@@ -9,7 +9,7 @@ export default {
     "insight"
   ],
 
-  npm: [
+  hackernews: [
     "contrarian",
     "insight"
   ],

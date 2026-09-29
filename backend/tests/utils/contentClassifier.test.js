@@ -25,11 +25,6 @@ describe('Content Classifier Utils', () => {
       expect(result).toBe('hashnode');
     });
 
-    it('should detect NPM URLs', () => {
-      const result = detectSourceType('https://npmjs.com/package/react');
-      expect(result).toBe('npm');
-    });
-
     it('should detect Reddit URLs', () => {
       const result = detectSourceType('https://reddit.com/r/programming');
       expect(result).toBe('reddit');

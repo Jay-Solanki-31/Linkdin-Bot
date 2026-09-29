@@ -120,6 +120,42 @@ describe('AIService', () => {
       expect(vi.mocked(detectSourceType)).toHaveBeenCalledWith('https://github.com/repo');
     });
 
+    it('should retain Hacker News source type for external story URLs', async () => {
+      vi.mocked(generateAIResponse).mockResolvedValue({
+        text: '{"post": "A meaningful engineering insight from this Hacker News story with enough detail to pass validation", "imagePrompt": "Professional illustration about backend engineering tradeoffs"}',
+        promptType: 'insight',
+      });
+      vi.mocked(detectSourceType).mockReturnValue('github');
+
+      const result = await aiService.generateForContent({
+        title: 'A database engineering story',
+        description: 'A Hacker News discussion about backend database design.',
+        source: 'hackernews',
+        url: 'https://example.com/database-story',
+      });
+
+      expect(result.sourceType).toBe('hackernews');
+      expect(vi.mocked(detectSourceType)).not.toHaveBeenCalled();
+    });
+
+    it('should retain Hacker News context beyond the standard description limit', async () => {
+      const marker = 'Discussion details beyond six hundred characters';
+      vi.mocked(generateAIResponse).mockResolvedValue({
+        text: '{"post": "A meaningful engineering post with enough detail to satisfy validation requirements", "imagePrompt": "Professional illustration of backend system design"}',
+        promptType: 'insight',
+      });
+
+      await aiService.generateForContent({
+        title: 'Backend engineering discussion',
+        description: `${'x'.repeat(700)} ${marker}`,
+        source: 'hackernews',
+        url: 'https://example.com/backend-engineering',
+      });
+
+      const { prompt } = vi.mocked(generateAIResponse).mock.calls[0][0];
+      expect(prompt).toContain(marker);
+    });
+
     it('should clamp title to 180 characters', async () => {
       const longTitle = 'a'.repeat(200);
       const mockResponse = {

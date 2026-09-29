@@ -43,6 +43,7 @@ export default function AIPosts() {
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [meta, setMeta] = useState(null)
+  const [statusCounts, setStatusCounts] = useState({ posted: 0, queued: 0, failed: 0 })
   const [selected, setSelected] = useState(null)
   const [modalInitialEditing, setModalInitialEditing] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -55,6 +56,7 @@ export default function AIPosts() {
         const body = res?.data ?? res
         setPosts(body?.data ?? [])
         setMeta(body?.pagination ?? null)
+        setStatusCounts(body?.statusCounts ?? { posted: 0, queued: 0, failed: 0 })
       })
       .catch(() => toast.error("Failed to load posts"))
       .finally(() => setLoading(false))
@@ -73,6 +75,11 @@ export default function AIPosts() {
       setMeta((prev) =>
         prev ? { ...prev, total: prev.total - 1 } : prev
       )
+
+      setStatusCounts((prev) => ({
+        ...prev,
+        [deleteTarget.status]: Math.max((prev[deleteTarget.status] ?? 0) - 1, 0),
+      }))
 
       toast.success("Post deleted successfully")
     } catch (err) {
@@ -96,12 +103,6 @@ export default function AIPosts() {
     setSelected((prev) =>
       prev && prev._id === updatedPost._id ? { ...prev, ...updatedPost } : prev
     )
-  }
-
-  const statusCounts = {
-    posted: posts.filter(p => p.status === "posted").length,
-    queued: posts.filter(p => p.status === "queued").length,
-    failed: posts.filter(p => p.status === "failed").length,
   }
 
   return (

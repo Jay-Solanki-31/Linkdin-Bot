@@ -1,5 +1,6 @@
 // tests/models/fetchedContent.model.test.js
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import FetchedContent from '../../src/models/fetchedContent.model.js';
 
 describe('FetchedContent Model', () => {
   let mockContent;
@@ -29,7 +30,7 @@ describe('FetchedContent Model', () => {
   });
 
   it('should validate source type', () => {
-    const validSources = ['devto', 'medium', 'github', 'hashnode', 'npm'];
+    const validSources = ['devto', 'medium', 'github', 'hashnode', 'hackernews'];
     expect(validSources).toContain(mockContent.source);
   });
 
@@ -38,6 +39,14 @@ describe('FetchedContent Model', () => {
     const content2 = { url: 'https://example.com/article' };
 
     expect(content1.url).toBe(content2.url);
+  });
+
+  it('should enforce unique source item IDs when present', () => {
+    const sourceItemIdIndex = FetchedContent.schema.indexes().find(
+      ([fields]) => fields.sourceItemId === 1
+    );
+
+    expect(sourceItemIdIndex[1]).toMatchObject({ unique: true, sparse: true });
   });
 
   it('should track processing status', () => {

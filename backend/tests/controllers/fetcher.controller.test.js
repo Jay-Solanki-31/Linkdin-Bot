@@ -25,7 +25,7 @@ describe('Fetcher Controller', () => {
     });
 
     it('should validate source is supported', () => {
-      const supportedSources = ['devto', 'medium', 'github', 'hashnode', 'npm'];
+      const supportedSources = ['devto', 'medium', 'github', 'hashnode', 'hackernews'];
       expect(supportedSources).toContain('devto');
     });
 
