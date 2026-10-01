@@ -5,14 +5,14 @@
  *     tags:
  *       - Fetcher
  *     summary: Start fetching content from a specific source
- *     description: Triggers content fetching from a specified source (devto, github, hackernews, hashnode, medium, nodeweekly, npm, reddit, etc.)
+ *     description: Triggers content fetching from a specified source (devto, github, hackernews, hashnode, medium, nodeweekly, reddit, etc.)
  *     parameters:
  *       - in: path
  *         name: source
  *         required: true
  *         schema:
  *           type: string
- *           enum: [devto, github, hackernews, hashnode, medium, nodeweekly, npm, reddit]
+ *           enum: [devto, github, hackernews, hashnode, medium, nodeweekly, reddit]
  *         description: The content source to fetch from
  *     responses:
  *       200:

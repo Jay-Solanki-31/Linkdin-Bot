@@ -3,15 +3,15 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import { Github, BookOpen, Newspaper, Package, Hash, Mail, Zap } from "lucide-react"
-import { SiReddit } from "react-icons/si"
+import { Github, BookOpen, Newspaper, Mail } from "lucide-react"
+import { SiReddit, SiYcombinator } from "react-icons/si"
 import { startFetch } from "@/api/fetcher.api"
 
 const sources = [
   { id: "github", label: "GitHub", icon: <Github className="w-6 h-6" />, color: "from-slate-900 to-slate-700", lightBg: "from-slate-50 to-slate-100" },
   { id: "devto", label: "Dev.to", icon: <BookOpen className="w-6 h-6" />, color: "from-zinc-900 to-black", lightBg: "from-zinc-100 to-zinc-200" },
   { id: "medium", label: "Medium", icon: <Newspaper className="w-6 h-6" />, color: "from-emerald-600 to-emerald-800", lightBg: "from-emerald-50 to-emerald-100" },
-  { id: "npm", label: "NPM", icon: <Package className="w-6 h-6" />, color: "from-red-600 to-red-500", lightBg: "from-red-50 to-red-100" },
+  { id: "hackernews", label: "Hacker News", icon: <SiYcombinator className="w-6 h-6" />, color: "from-orange-600 to-orange-500", lightBg: "from-orange-50 to-orange-100" },
   { id: "nodeweekly", label: "Node Weekly", icon: <Mail className="w-6 h-6" />, color: "from-green-600 to-green-700", lightBg: "from-green-50 to-green-100" },
   { id: "reddit", label: "Reddit", icon: <SiReddit className="w-6 h-6" />, color: "from-orange-600 to-orange-500", lightBg: "from-orange-50 to-orange-100" },
 ]

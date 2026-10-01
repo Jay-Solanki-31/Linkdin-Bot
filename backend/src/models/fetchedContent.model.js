@@ -7,6 +7,7 @@ const schema = new mongoose.Schema(
     description: { type: String, default: "" },
     language: { type: String, default: null },
     source: { type: String, default: null },
+    sourceItemId: { type: String, default: undefined },
     timestamp: { type: Date, default: Date.now },
     expiresAt: {
       type: Date,
@@ -22,5 +23,7 @@ schema.index(
   { expiresAt: 1 },
   { expireAfterSeconds: 0 }
 );
+
+schema.index({ sourceItemId: 1 }, { unique: true, sparse: true });
 
 export default mongoose.model("FetchedContent", schema);

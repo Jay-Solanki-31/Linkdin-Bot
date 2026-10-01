@@ -2,22 +2,14 @@ import { Worker } from "bullmq";
 import { redisConnection } from "../connection.js";
 
 import FetcherService from "../../modules/fetchers/fetcher.service.js";
+import { filterHackerNewsDuplicates } from "../../modules/fetchers/filterHackerNewsDuplicates.js";
 import FetchedContent from "../../models/fetchedContent.model.js";
+import { normalizeFetchedUrl } from "../../utils/normalizeFetchedUrl.js";
 
 // import { enqueueSlotAllocation } from "../slotAllocator.queue.js";
 
 import logger from "../../utils/logger.js";
 
-
-function normalizeUrl(url) {
-  try {
-    const u = new URL(url);
-    u.search = "";
-    return u.toString();
-  } catch {
-    return url;
-  }
-}
 
 export default new Worker(
   "fetcher-queue",
@@ -41,12 +33,50 @@ export default new Worker(
       const now = new Date();
       const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-      const operations = rawItems.map((item) => {
-        const normalizedUrl = normalizeUrl(item.url);
+      let itemsToStore = rawItems.map((item) => ({
+        ...item,
+        url: normalizeFetchedUrl(item.url, source),
+      }));
+      let duplicatesSkipped = 0;
+
+      if (source === "hackernews") {
+        const validItems = itemsToStore.filter(
+          (item) => item.sourceItemId && item.url
+        );
+        duplicatesSkipped += itemsToStore.length - validItems.length;
+
+        const existing = await FetchedContent.find({
+          $or: [
+            { url: { $in: validItems.map((item) => item.url) } },
+            {
+              sourceItemId: {
+                $in: validItems.map((item) => item.sourceItemId),
+              },
+            },
+          ],
+        })
+          .select("url sourceItemId")
+          .lean();
+        const deduplicated = filterHackerNewsDuplicates(validItems, existing);
+        itemsToStore = deduplicated.items;
+        duplicatesSkipped += deduplicated.duplicatesSkipped;
+      }
+
+      if (!itemsToStore.length) {
+        logger.info(
+          `Fetcher ${source}: fetched=${rawItems.length}, valid=0, duplicatesSkipped=${duplicatesSkipped}`
+        );
+        return;
+      }
+
+      const operations = itemsToStore.map((item) => {
+        const normalizedUrl = item.url;
 
         return {
           updateOne: {
-            filter: { url: normalizedUrl },
+            filter: item.sourceItemId
+              ? { sourceItemId: item.sourceItemId }
+              : { url: normalizedUrl },
             update: {
               $set: {
                 ...item,
@@ -70,10 +100,10 @@ export default new Worker(
       const inserted = result.upsertedCount || 0;
       const modified = result.modifiedCount || 0;
       const matched = result.matchedCount || 0;
-      const duplicates = rawItems.length - inserted;
+      const duplicates = duplicatesSkipped + matched;
 
       logger.info(
-        `Fetcher ${source}: fetched=${rawItems.length}, inserted=${inserted}, updated=${modified}, matched=${matched}, duplicates=${duplicates}`
+        `Fetcher ${source}: fetched=${rawItems.length}, valid=${itemsToStore.length}, inserted=${inserted}, updated=${modified}, matched=${matched}, duplicatesSkipped=${duplicates}`
       );
 
       if (inserted === 0) {

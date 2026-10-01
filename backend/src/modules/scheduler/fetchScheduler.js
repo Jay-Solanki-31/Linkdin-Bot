@@ -15,7 +15,7 @@ export const startFetchScheduler = () => {
           "devto",
           "github",
           "medium",
-          "npm",
+          "hackernews",
           "nodeweekly",
           "reddit"
         ];

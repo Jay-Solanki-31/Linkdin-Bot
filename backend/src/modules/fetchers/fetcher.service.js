@@ -2,7 +2,7 @@ import fetchDevto from "./sources/devto.js";
 import fetchGithub from "./sources/github.js";
 import fetchMedium from "./sources/medium.js";
 import fetchNodeweekly from "./sources/nodeweekly.js";
-import fetchNpm from "./sources/npm.js";
+import fetchHackerNews from "./sources/hackernews.js";
 import fetchReddit from "./sources/reddit.js";
 
 class FetcherService {
@@ -17,8 +17,8 @@ class FetcherService {
       case "github":
         return fetchGithub(params);
 
-      case "npm":
-        return fetchNpm(params);
+      case "hackernews":
+        return fetchHackerNews(params);
 
       case "nodeweekly":
         return fetchNodeweekly(params);
@@ -38,7 +38,7 @@ class FetcherService {
       "devto",
       "medium",
       "github",
-      "npm",
+      "hackernews",
       "nodeweekly",
       "reddit",
     ];

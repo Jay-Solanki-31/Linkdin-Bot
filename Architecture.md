@@ -5,7 +5,7 @@
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                     CONTENT SOURCES                             │
-│  (Dev.to, Medium, GitHub, NPM, Hashnode, Reddit, Node Weekly)  │
+│  (Dev.to, Medium, GitHub, Hacker News, Hashnode, Reddit, Node Weekly)  │
 └────────────────────────┬────────────────────────────────────────┘
                          │
                          ▼
@@ -95,7 +95,7 @@
 │   │   │   │   │   ├── hashnode.js
 │   │   │   │   │   ├── medium.js
 │   │   │   │   │   ├── nodeweekly.js
-│   │   │   │   │   ├── npm.js
+│   │   │   │   │   ├── hackernews.js
 │   │   │   │   │   └── reddit.js
 │   │   │   │   ├── fetcher.service.js
 │   │   │   │   └── index.js
