@@ -39,7 +39,8 @@ app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 const allowedOrigins = [
   "http://localhost:5173",
   "https://linkedin-contentbot-frontend.onrender.com",
-  "chrome-extension://hiognlmnbdoiicbdigfonpfpoicoijaj"
+  "https://linkedin-contentbot.onrender.com",
+  "chrome-extension://hiognlmnbdoiicbdigfonpfpoicoijaj",
 ];
 
 app.use(
