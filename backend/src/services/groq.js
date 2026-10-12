@@ -1,7 +1,8 @@
-import dotenv from "dotenv";
-dotenv.config();
 
+import dotenv from "dotenv";
 import axios from "axios";
+
+dotenv.config();
 
 export default async function generateAIResponse({
   prompt,
@@ -19,25 +20,16 @@ export default async function generateAIResponse({
       "https://api.groq.com/openai/v1/chat/completions",
       {
         model: "openai/gpt-oss-120b",
-
         messages: [
-          {
-            role: "system",
-            content: systemPrompt,
-          },
-          {
-            role: "user",
-            content: prompt,
-          },
+          { role: "system", content: systemPrompt },
+          { role: "user", content: prompt },
         ],
-
         temperature: 0.7,
         top_p: 0.95,
         max_tokens: 700,
       },
       {
         timeout: 20000,
-
         headers: {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
@@ -45,32 +37,57 @@ export default async function generateAIResponse({
       }
     );
 
-    let content = data?.choices?.[0]?.message?.content;
+    const choice = data?.choices?.[0];
+    const message = choice?.message;
+    const content = message?.content;
 
-    if (content === null || content === undefined || String(content).trim() === "") {
-      throw new Error("Groq returned empty content");
+    // Log metadata only; never log API keys or full prompts.
+    console.info("[Groq] Response metadata:", {
+      model: data?.model,
+      finishReason: choice?.finish_reason,
+      promptTokens: data?.usage?.prompt_tokens,
+      completionTokens: data?.usage?.completion_tokens,
+      contentType: typeof content,
+      contentLength:
+        typeof content === "string" ? content.length : null,
+      hasChoices: Array.isArray(data?.choices),
+      choiceCount: data?.choices?.length ?? 0,
+    });
+
+    if (typeof content !== "string" || !content.trim()) {
+      throw new Error(
+        `Groq returned no usable text (finish_reason=${choice?.finish_reason ?? "unknown"})`
+      );
     }
 
-    content = String(content)
-      .replace(/^```json\s*/i, "")
-      .replace(/^```/i, "")
-      .replace(/```$/i, "")
+    const text = content
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/\s*```$/, "")
       .trim();
 
-    const firstBrace = content.indexOf("{");
-    const lastBrace = content.lastIndexOf("}");
-
-    if (firstBrace >= 0 && lastBrace > firstBrace) {
-      content = content.slice(firstBrace, lastBrace + 1).trim();
-    }
-
     return {
-      text: content,
+      text,
       promptType,
+      finishReason: choice?.finish_reason,
+      usage: data?.usage,
     };
   } catch (err) {
-    const errorMessage = err?.response?.data?.error?.message || err.message;
+    if (axios.isAxiosError(err)) {
+      console.error("[Groq] HTTP request failed:", {
+        status: err.response?.status,
+        code: err.code,
+        message:
+          err.response?.data?.error?.message ?? err.message,
+        requestId:
+          err.response?.headers?.["x-request-id"] ?? null,
+      });
+    } else {
+      console.error("[Groq] Response processing failed:", {
+        message: err.message,
+      });
+    }
 
-    throw new Error(`Groq request failed: ${errorMessage}`);
+    // Preserve the original error and stack.
+    throw err;
   }
 }
