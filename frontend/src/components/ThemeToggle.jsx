@@ -3,15 +3,16 @@ import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme: theme, setTheme } = useTheme();
 
   return (
     <Button
+      aria-label={
+        theme === "dark" ? "Switch to light theme" : "Switch to dark theme"
+      }
       variant="ghost"
       size="icon"
-      onClick={() =>
-        setTheme(theme === "dark" ? "light" : "dark")
-      }
+      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
       className="rounded-lg transition-all duration-200"
     >
       {theme === "dark" ? (

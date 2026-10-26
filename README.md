@@ -430,6 +430,8 @@ ADMIN_PASSWORD=admin
 LOG_LEVEL=info
 ```
 
+Session-cookie security follows the configured URL schemes: HTTP `FRONTEND_ORIGIN` and `LINKEDIN_REDIRECT_URI` use a non-Secure `SameSite=Lax` cookie, while HTTPS for both uses `Secure` and `SameSite=None`. Set `FRONTEND_ORIGIN` and `LINKEDIN_REDIRECT_URI` to the exact URLs used by the app and LinkedIn developer settings; `NODE_ENV` alone does not determine the cookie flags. LinkedIn OAuth transactions are persisted by hashed state and expire after ten minutes. The current application has no separate login/user model, so LinkedIn tokens are associated with the server-created application session account ID.
+
 ---
 
 # Running the Application
@@ -599,4 +601,3 @@ Please follow the existing folder structure and code conventions when submitting
 # Author
 
 Built for automated developer content distribution and AI-assisted LinkedIn publishing workflows.
-

@@ -50,7 +50,7 @@ describe('generateAIResponse (Groq Service)', () => {
         model: 'openai/gpt-oss-120b',
         temperature: 0.7,
         top_p: 0.95,
-        max_tokens: 700,
+        max_tokens: 2000,
       }),
       expect.objectContaining({
         timeout: 20000,

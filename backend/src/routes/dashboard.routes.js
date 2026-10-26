@@ -5,6 +5,7 @@ import GeneratedPost from "../models/generatedPost.model.js";
 import { fetcherQueue } from "../queue/fetcher.queue.js";
 import { aiQueue } from "../queue/ai.queue.js";
 import { redisConnection } from "../queue/connection.js";
+import { requireAuthenticatedMemberUrn } from "../utils/authenticatedAccount.js";
 
 const router = express.Router();
 
@@ -28,19 +29,36 @@ fetcherEvents.on("completed", () => {
 });
 
 
-let cachedDashboard = null;
-let lastCacheTime = 0;
+const dashboardCache = new Map();
 
 const CACHE_DURATION = 60 * 1000;
 
+async function getAccountQueueCounts(queue, linkedinMemberUrn) {
+  const jobs = await queue.getJobs(
+    ["waiting", "active", "delayed", "completed", "failed"],
+    0,
+    -1,
+  );
+  const counts = { waiting: 0, active: 0, delayed: 0, completed: 0, failed: 0 };
+  for (const job of jobs) {
+    if (job.data?.linkedinMemberUrn !== linkedinMemberUrn) continue;
+    const state = await job.getState();
+    if (counts[state] !== undefined) counts[state] += 1;
+  }
+  return counts;
+}
+
 router.get("/", async (req, res) => {
+  const linkedinMemberUrn = requireAuthenticatedMemberUrn(req, res);
+  if (!linkedinMemberUrn) return;
   const now = Date.now();
+  const cached = dashboardCache.get(linkedinMemberUrn);
 
   if (
-    cachedDashboard &&
-    now - lastCacheTime < CACHE_DURATION
+    cached &&
+    now - cached.time < CACHE_DURATION
   ) {
-    return res.json(cachedDashboard);
+    return res.json(cached.data);
   }
 
   try {
@@ -65,6 +83,7 @@ router.get("/", async (req, res) => {
       await FetchedContent.aggregate([
         {
           $match: {
+            linkedinMemberUrn,
             createdAt: {
               $gte: startDate,
             },
@@ -134,21 +153,20 @@ router.get("/", async (req, res) => {
       aiGeneratedCount,
       recent,
     ] = await Promise.all([
-      fetcherQueue.getJobCounts(),
+      getAccountQueueCounts(fetcherQueue, linkedinMemberUrn),
 
-      aiQueue.getJobCounts(),
+      getAccountQueueCounts(aiQueue, linkedinMemberUrn),
 
-      FetchedContent.countDocuments(),
+      FetchedContent.countDocuments({ linkedinMemberUrn }),
 
-      FetchedContent.countDocuments({
-        createdAt: {
+      FetchedContent.countDocuments({ linkedinMemberUrn, createdAt: {
           $gte: today,
         },
       }),
 
-      GeneratedPost.countDocuments(),
+      GeneratedPost.countDocuments({ linkedinMemberUrn }),
 
-      FetchedContent.find()
+      FetchedContent.find({ linkedinMemberUrn })
         .sort({
           createdAt: -1,
         })
@@ -211,9 +229,7 @@ router.get("/", async (req, res) => {
       recentActivity: recent,
     };
 
-    cachedDashboard = responseData;
-
-    lastCacheTime = now;
+    dashboardCache.set(linkedinMemberUrn, { data: responseData, time: now });
 
     return res.json(responseData);
   } catch (err) {

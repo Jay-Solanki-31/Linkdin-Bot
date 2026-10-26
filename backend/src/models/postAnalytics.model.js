@@ -2,6 +2,10 @@ import mongoose from "mongoose";
 
 const PostAnalyticsSchema = new mongoose.Schema(
   {
+    linkedinMemberUrn: {
+      type: String,
+      index: true,
+    },
     postId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "GeneratedPost",
@@ -61,7 +65,7 @@ PostAnalyticsSchema.index({
   collectedAt: -1,
 });
 
-export default mongoose.model(
+export default mongoose.models.PostAnalytics || mongoose.model(
   "PostAnalytics",
   PostAnalyticsSchema
 );

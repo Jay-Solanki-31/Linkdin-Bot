@@ -1,4 +1,3 @@
-import { InferenceClient } from "@huggingface/inference";
 import fs from "fs";
 import path from "path";
 import sharp from "sharp";
@@ -6,11 +5,8 @@ import logger from "../utils/logger.js";
 
 class ImageGenerator {
   constructor() {
-    const token = process.env.HF_TOKEN;
-    if (!token) {
-      throw new Error("Missing HF_TOKEN in environment variables");
-    }
-    this.hf = new InferenceClient(token);
+    // Image generation is optional. The AI worker must be able to publish a
+    // text-only post when the provider is unavailable or out of credits.
   }
 
   async generate(prompt, postId) {
@@ -21,17 +17,25 @@ class ImageGenerator {
     try {
       const enhancedPrompt = `${prompt}, high-quality corporate 3D vector illustration style, clean minimalist tech graphic, vibrant lighting, sharp focus, 4k resolution, professional digital art, studio background, textless, no realistic human faces`;
 
-      logger.info(`Sending SDK request to Hugging Face for Post ID: ${postId}`);
+      logger.info(`Sending request to Free Flux Endpoint for Post ID: ${postId}`);
 
-      const responseBlob = await this.hf.textToImage({
-        model: "black-forest-labs/FLUX.1-schnell",
-        inputs: enhancedPrompt,
-      });
+      const encodedPrompt = encodeURIComponent(enhancedPrompt);
+      
+      const randomSeed = Math.floor(Math.random() * 1000000);
+      
+      const url = `https://pollinations.ai/p/${encodedPrompt}?model=flux&width=1200&height=627&seed=${randomSeed}`;
 
-      const buffer = Buffer.from(await responseBlob.arrayBuffer());
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`Image API responded with status: ${response.status}`);
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
 
       if (!buffer || buffer.length === 0) {
-        throw new Error("Empty image data returned from Hugging Face");
+        throw new Error("Empty image data returned from endpoint");
       }
 
       const uploadDir = path.join(process.cwd(), "uploads", "images");

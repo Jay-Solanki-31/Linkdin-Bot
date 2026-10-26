@@ -2,8 +2,9 @@ import mongoose from "mongoose";
 
 const schema = new mongoose.Schema(
   {
+    linkedinMemberUrn: { type: String, index: true },
     title: { type: String, required: true },
-    url: { type: String, unique: true, required: true },
+    url: { type: String, required: true },
     description: { type: String, default: "" },
     language: { type: String, default: null },
     source: { type: String, default: null },
@@ -24,6 +25,19 @@ schema.index(
   { expireAfterSeconds: 0 }
 );
 
-schema.index({ sourceItemId: 1 }, { unique: true, sparse: true });
+schema.index(
+  { linkedinMemberUrn: 1, url: 1 },
+  { unique: true, partialFilterExpression: { linkedinMemberUrn: { $type: "string" } } }
+);
+schema.index(
+  { linkedinMemberUrn: 1, sourceItemId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      linkedinMemberUrn: { $type: "string" },
+      sourceItemId: { $type: "string" },
+    },
+  }
+);
 
-export default mongoose.model("FetchedContent", schema);
+export default mongoose.models.FetchedContent || mongoose.model("FetchedContent", schema);

@@ -11,7 +11,7 @@ const clamp = (str = "", max = 600) =>
     .slice(0, max);
 
 class AIService {
-  async generateForContent({ title, description, source, url }) {
+  async generateForContent({ title, description, source, url }, customPrompt = "") {
     if (!title && !description) {
       throw new Error("AIService: empty content");
     }
@@ -81,7 +81,7 @@ Requirements:
 
     try {
       const result = await generateAIResponse({
-        prompt,
+        prompt: prompt + (customPrompt ? `\nUser writing instructions:\n${customPrompt}` : ""),
         systemPrompt,
         promptType,
       });

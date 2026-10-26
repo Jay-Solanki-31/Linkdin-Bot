@@ -4,9 +4,22 @@ const GeneratedPostSchema = new mongoose.Schema({
   articleId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "FetchedContent",
-    required: true,
+    required: function () { return this.creationMode !== "manual"; },
   },
+  linkedinMemberUrn: {
+    type: String,
+    index: true,
+  },
+  // Manual Thunder Client runs set this to prevent real LinkedIn publishing.
+  testMode: { type: Boolean, default: false, index: true },
 
+  creationMode: { type: String, enum: ["automatic", "manual"], default: "automatic" },
+  topic: String,
+  customPrompt: String,
+  timezone: { type: String, default: "Asia/Kolkata" },
+  scheduleVersion: { type: Number, default: 0 },
+  publishAttemptedAt: Date,
+  attempts: { type: Number, default: 0 },
   title: { type: String, default: "" },
   text: { type: String },
   imagePrompt: {
@@ -38,7 +51,7 @@ const GeneratedPostSchema = new mongoose.Schema({
   source: { type: String },
   status: {
     type: String,
-    enum: ["draft", "generating", "queued", "publishing", "posted", "failed"],
+    enum: ["draft", "generating", "queued", "publishing", "posted", "failed", "review_required"],
     default: "draft",
     index: true
   },
@@ -79,7 +92,13 @@ const GeneratedPostSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
-GeneratedPostSchema.index({ articleId: 1 }, { unique: true });
+GeneratedPostSchema.index(
+  { articleId: 1, linkedinMemberUrn: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { linkedinMemberUrn: { $type: "string" }, articleId: { $type: "objectId" } },
+  }
+);
 
 GeneratedPostSchema.index(
   { linkedinPostUrn: 1 },
@@ -101,5 +120,5 @@ GeneratedPostSchema.index({ publishAt: 1 });
 GeneratedPostSchema.index({ status: 1, linkedinPostUrn: 1});
 
 
-export default mongoose.model("GeneratedPost", GeneratedPostSchema);
+export default mongoose.models.GeneratedPost || mongoose.model("GeneratedPost", GeneratedPostSchema);
 

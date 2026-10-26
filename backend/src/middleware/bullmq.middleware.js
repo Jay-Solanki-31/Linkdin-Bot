@@ -1,5 +1,4 @@
-import dotenv from 'dotenv';
-dotenv.config();
+import "dotenv/config";
 import basicAuth from "express-basic-auth";
 
 const dashboardAuth = basicAuth({

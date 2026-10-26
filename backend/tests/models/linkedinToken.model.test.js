@@ -1,14 +1,15 @@
 // tests/models/linkedinToken.model.test.js
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import LinkedInToken from '../../src/models/linkedinToken.model.js';
 
 describe('LinkedinToken Model', () => {
   let mockToken;
 
   beforeEach(() => {
     mockToken = {
-      userId: 'user-123',
+      accountId: 'session-account-123',
+      memberUrn: 'urn:li:person:member-123',
       accessToken: 'token-abc',
-      refreshToken: 'refresh-xyz',
       expiresAt: new Date(Date.now() + 3600000),
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -16,10 +17,25 @@ describe('LinkedinToken Model', () => {
   });
 
   it('should have required fields', () => {
-    expect(mockToken).toHaveProperty('userId');
+    expect(mockToken).toHaveProperty('accountId');
+    expect(mockToken).toHaveProperty('memberUrn');
     expect(mockToken).toHaveProperty('accessToken');
-    expect(mockToken).toHaveProperty('refreshToken');
     expect(mockToken).toHaveProperty('expiresAt');
+  });
+
+  it('should associate tokens with a server-side account key', () => {
+    expect(LinkedInToken.schema.path('_id').instance).toBe('ObjectId');
+    expect(LinkedInToken.schema.path('accountId').options).toMatchObject({
+      required: true,
+    });
+    expect(LinkedInToken.schema.path('memberUrn').options).toMatchObject({
+      required: true,
+      unique: true,
+    });
+    expect(LinkedInToken.schema.indexes()).toContainEqual([
+      { accountId: 1, memberUrn: 1 },
+      { unique: true },
+    ]);
   });
 
   it('should validate token expiration', () => {
@@ -53,11 +69,12 @@ describe('LinkedinToken Model', () => {
 
   it('should support multiple tokens per user', () => {
     const tokens = [
-      { userId: 'user-123', accessToken: 'token-1' },
-      { userId: 'user-123', accessToken: 'token-2' },
+      { accountId: 'account-a', memberUrn: 'urn:li:person:one', accessToken: 'token-1' },
+      { accountId: 'account-b', memberUrn: 'urn:li:person:two', accessToken: 'token-2' },
     ];
 
-    expect(tokens.filter(t => t.userId === 'user-123').length).toBe(2);
+    expect(tokens.filter(t => t.accountId === 'account-a').length).toBe(1);
+    expect(tokens.filter(t => t.accountId === 'account-b').length).toBe(1);
   });
 
   it('should validate token format', () => {
@@ -66,9 +83,12 @@ describe('LinkedinToken Model', () => {
 
   it('should enforce unique active tokens per user', () => {
     const activeTokens = [mockToken];
-    const newToken = { ...mockToken, refreshToken: 'new-refresh' };
+    const newToken = { ...mockToken, memberUrn: 'urn:li:person:another-member' };
 
-    // In real implementation, would enforce uniqueness
-    expect(activeTokens.length).toBe(1);
+    expect(LinkedInToken.schema.indexes()).toContainEqual([
+      { accountId: 1, memberUrn: 1 },
+      { unique: true },
+    ]);
+    expect(newToken.accountId).toBe(activeTokens[0].accountId);
   });
 });

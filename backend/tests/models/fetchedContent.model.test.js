@@ -34,19 +34,21 @@ describe('FetchedContent Model', () => {
     expect(validSources).toContain(mockContent.source);
   });
 
-  it('should prevent duplicate content', () => {
-    const content1 = { url: 'https://example.com/article' };
-    const content2 = { url: 'https://example.com/article' };
+  it('should allow the same URL for different accounts', () => {
+    const content1 = { url: 'https://example.com/article', linkedinMemberUrn: 'urn:li:person:A' };
+    const content2 = { url: 'https://example.com/article', linkedinMemberUrn: 'urn:li:person:B' };
 
     expect(content1.url).toBe(content2.url);
+    expect(content1.linkedinMemberUrn).not.toBe(content2.linkedinMemberUrn);
   });
 
   it('should enforce unique source item IDs when present', () => {
     const sourceItemIdIndex = FetchedContent.schema.indexes().find(
-      ([fields]) => fields.sourceItemId === 1
+      ([fields]) => fields.linkedinMemberUrn === 1 && fields.sourceItemId === 1
     );
 
-    expect(sourceItemIdIndex[1]).toMatchObject({ unique: true, sparse: true });
+    expect(sourceItemIdIndex[1]).toMatchObject({ unique: true });
+    expect(sourceItemIdIndex[0]).toMatchObject({ linkedinMemberUrn: 1, sourceItemId: 1 });
   });
 
   it('should track processing status', () => {

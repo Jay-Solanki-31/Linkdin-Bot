@@ -1,472 +1,252 @@
-import { useEffect, useState } from "react"
-import { fetchAIPosts, deleteAIPost, updateAIPost } from "@/api/aiPosts.api"
-import { toast } from "sonner"
-
+﻿import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { fetchAIPosts, deleteAIPost } from "@/api/aiPosts.api";
+import { useAuth } from "@/auth/AuthContext";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
-import { StatusBadge } from "@/components/ui/status-badge"
-import { AnimatedNumber } from "@/components/ui/animated-number"
-
-function ImagePreview({ src, className = "", label = "No Image" }) {
-  const [hasError, setHasError] = useState(false)
-
-  if (!src || hasError) {
-    return (
-      <div className={"flex h-20 w-20 items-center justify-center rounded-md border border-dashed border-border bg-muted text-center text-[11px] text-muted-foreground " + className}>
-        {label}
-      </div>
-    )
-  }
-
-  return (
-    <img
-      src={src}
-      alt="Generated"
-      className={"h-20 w-20 rounded-md object-cover " + className}
-      onError={() => setHasError(true)}
-    />
-  )
-}
-
+  PageHeader,
+  StatCard,
+  EmptyState,
+  ErrorState,
+  LoadingSkeleton,
+  PostStatus,
+  ConfirmationDialog,
+} from "@/components/WorkspaceUI";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 export default function AIPosts() {
-  const [posts, setPosts] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [page, setPage] = useState(1)
-  const [meta, setMeta] = useState(null)
-  const [statusCounts, setStatusCounts] = useState({ posted: 0, queued: 0, failed: 0 })
-  const [selected, setSelected] = useState(null)
-  const [modalInitialEditing, setModalInitialEditing] = useState(false)
-  const [deleteTarget, setDeleteTarget] = useState(null)
-
+  const { isAuthenticated, auth } = useAuth();
+  const [posts, setPosts] = useState(null),
+    [meta, setMeta] = useState(null),
+    [counts, setCounts] = useState({});
+  const [page, setPage] = useState(1),
+    [filter, setFilter] = useState("all"),
+    [search, setSearch] = useState("");
+  const [error, setError] = useState(""),
+    [retry, setRetry] = useState(0),
+    [target, setTarget] = useState(null),
+    [busy, setBusy] = useState(false);
   useEffect(() => {
-    setLoading(true)
-
-    fetchAIPosts({ page, limit: 10 })
-      .then((res) => {
-        const body = res?.data ?? res
-        setPosts(body?.data ?? [])
-        setMeta(body?.pagination ?? null)
-        setStatusCounts(body?.statusCounts ?? { posted: 0, queued: 0, failed: 0 })
-      })
-      .catch(() => toast.error("Failed to load posts"))
-      .finally(() => setLoading(false))
-  }, [page])
-
-  const handleDelete = async () => {
-    if (!deleteTarget) return
-
+    if (!isAuthenticated) return;
+    let active = true;
+    async function load() {
+      try {
+        const r = await fetchAIPosts({ page, limit: 12 });
+        if (active) {
+          setPosts(r.data.data || []);
+          setMeta(r.data.pagination);
+          setCounts(r.data.statusCounts || {});
+          setError("");
+        }
+      } catch {
+        if (active) setError("Could not load your posts.");
+      }
+    }
+    load();
+    const timer = setInterval(load, 10000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [isAuthenticated, auth?.memberUrn, page, retry]);
+  async function remove() {
+    setBusy(true);
     try {
-      await deleteAIPost(deleteTarget._id)
-
-      setPosts((prev) =>
-        prev.filter((p) => p._id !== deleteTarget._id)
-      )
-
-      setMeta((prev) =>
-        prev ? { ...prev, total: prev.total - 1 } : prev
-      )
-
-      setStatusCounts((prev) => ({
-        ...prev,
-        [deleteTarget.status]: Math.max((prev[deleteTarget.status] ?? 0) - 1, 0),
-      }))
-
-      toast.success("Post deleted successfully")
-    } catch (err) {
-      toast.error(
-        err?.response?.data?.message || "Failed to delete post"
-      )
+      await deleteAIPost(target._id);
+      setTarget(null);
+      setPosts(null);
+      setRetry((n) => n + 1);
+    } catch (e) {
+      setError(e.response?.data?.message || "Could not delete this post.");
+      setTarget(null);
     } finally {
-      setDeleteTarget(null)
+      setBusy(false);
     }
   }
-
-  const handlePostUpdated = (updatedPost) => {
-    if (!updatedPost?._id) return
-
-    setPosts((prev) =>
-      prev.map((post) =>
-        post._id === updatedPost._id ? { ...post, ...updatedPost } : post
-      )
-    )
-
-    setSelected((prev) =>
-      prev && prev._id === updatedPost._id ? { ...prev, ...updatedPost } : prev
-    )
-  }
-
+  const shown = (posts || []).filter(
+    (p) =>
+      (filter === "all" || p.status === filter) &&
+      (p.title || p.topic || p.text || "")
+        .toLowerCase()
+        .includes(search.toLowerCase()),
+  );
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">AI Generated Posts</h1>
-
-      <div className="grid grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold"><AnimatedNumber value={statusCounts.posted} /></div>
-            <p className="text-xs text-muted-foreground">Posted</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold"><AnimatedNumber value={statusCounts.queued} /></div>
-            <p className="text-xs text-muted-foreground">Queued</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold text-red-600"><AnimatedNumber value={statusCounts.failed} /></div>
-            <p className="text-xs text-muted-foreground">Failed</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div>
-        <Card>
-          <CardContent className="p-6">
-            {loading ? (
-              <div className="space-y-3">
-                {[...Array(6)].map((_, i) => (
-                  <Skeleton key={i} className="h-10 w-full" />
-                ))}
-              </div>
-            ) : (
-              <>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Image</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Publish At</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead className="text-right">
-                        Action
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-
-                  <TableBody>
-                    {posts.map((post) => (
-                      <tr
-                        key={post._id}
-                        className="hover:bg-muted/40 border-b transition-colors"
-                      >
-                        <TableCell className="max-w-xs truncate font-medium">
-                          {post.title}
-                        </TableCell>
-
-                        <TableCell className="py-3">
-                          <ImagePreview src={post.imageUrl || post.imagePath} />
-                        </TableCell>
-
-                        <TableCell>
-                          <StatusBadge
-                            variant={post.status === "posted" ? "success" : post.status === "queued" ? "warning" : "error"}
-                          >
-                            {post.status}
-                          </StatusBadge>
-                        </TableCell>
-
-                        <TableCell className="text-sm">
-                          {post.publishAt
-                            ? new Date(post.publishAt).toLocaleString()
-                            : "-"}
-                        </TableCell>
-
-                        <TableCell className="text-sm">
-                          {new Date(post.createdAt).toLocaleDateString()}
-                        </TableCell>
-
-                        <TableCell className="text-right space-x-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSelected(post)
-                              setModalInitialEditing(false)
-                            }}
-                          >
-                            View
-                          </Button>
-
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={post.status !== "queued"}
-                            onClick={() => {
-                              if (post.status !== "queued") {
-                                toast.error("Only queued posts can be edited")
-                                return
-                              }
-
-                              setSelected(post)
-                              setModalInitialEditing(true)
-                            }}
-                          >
-                            Edit
-                          </Button>
-
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            disabled={post.status === "posted"}
-                            onClick={() => setDeleteTarget(post)}
-                          >
-                            Delete
-                          </Button>
-                        </TableCell>
-                      </tr>
-                    ))}
-                  </TableBody>
-                </Table>
-
-                {meta?.totalPages > 1 && (
-                  <div className="flex justify-between mt-6">
-                    <Button
-                      disabled={page === 1}
-                      onClick={() => setPage((p) => p - 1)}
-                      size="sm"
-                      variant="outline"
-                    >
-                      Prev
-                    </Button>
-
-                    <span className="text-xs text-muted-foreground">
-                      Page {meta.page} of {meta.totalPages}
-                    </span>
-
-                    <Button
-                      disabled={page === meta.totalPages}
-                      onClick={() => setPage((p) => p + 1)}
-                      size="sm"
-                      variant="outline"
-                    >
-                      Next
-                    </Button>
-                  </div>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {selected && (
-        <AIPostModal
-          post={selected}
-          initialEditing={modalInitialEditing}
-          onClose={() => {
-            setSelected(null)
-            setModalInitialEditing(false)
-          }}
-          onUpdated={handlePostUpdated}
+      <PageHeader
+        title="Every post, in one place."
+        eyebrow="AI POSTS"
+        description="From first draft to published. Keep your content moving."
+      >
+        <Button asChild>
+          <Link to="/studio">＋ Create a post</Link>
+        </Button>
+      </PageHeader>
+      <div className="grid sm:grid-cols-3 gap-4">
+        <StatCard
+          label="Published"
+          value={counts.posted ?? 0}
+          detail="Confirmed published posts"
         />
-      )}
-
-      {deleteTarget && (
-        <DeleteConfirmModal
-          onCancel={() => setDeleteTarget(null)}
-          onConfirm={handleDelete}
+        <StatCard
+          label="Scheduled"
+          value={counts.queued ?? 0}
+          detail="Waiting in the publishing queue"
         />
-      )}
-    </div>
-  )
-}
-
-function DeleteConfirmModal({ onCancel, onConfirm }) {
-  return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
-      <div className="bg-background w-full max-w-md rounded-xl shadow-xl p-6 space-y-4 animate-fade-in">
-        <h2 className="text-lg font-semibold">
-          Delete Post
-        </h2>
-
-        <p className="text-sm text-muted-foreground">
-          Are you sure you want to delete this post?
-        </p>
-
-        <div className="flex justify-end gap-3">
-          <Button variant="outline" onClick={onCancel}>
-            Cancel
-          </Button>
-
-          <Button variant="destructive" onClick={onConfirm}>
-            Delete Post
-          </Button>
-        </div>
+        <StatCard
+          label="Needs attention"
+          value={(counts.failed || 0) + (counts.review_required || 0)}
+          detail="Failed or awaiting outcome review"
+        />
       </div>
-    </div>
-  )
-}
-
-function AIPostModal({ post, initialEditing = false, onClose, onUpdated }) {
-  const [isEditing, setIsEditing] = useState(initialEditing)
-  const [title, setTitle] = useState(post.title || "")
-  const [text, setText] = useState(post.text || "")
-  const [saving, setSaving] = useState(false)
-  const [imageError, setImageError] = useState(false)
-
-  useEffect(() => {
-    setTitle(post.title || "")
-    setText(post.text || "")
-    setIsEditing(initialEditing)
-    setImageError(false)
-  }, [post._id, post.title, post.text, post.imageUrl, post.imagePath, initialEditing])
-
-  const handleSave = async () => {
-    if (!title.trim() || !text.trim()) {
-      toast.error("Title and description are required")
-      return
-    }
-
-    setSaving(true)
-
-    try {
-      const response = await updateAIPost(post._id, {
-        title: title.trim(),
-        text: text.trim(),
-      })
-
-      const updatedPost = response?.data?.data ?? response?.data ?? null
-
-      if (updatedPost) {
-        onUpdated(updatedPost)
-      }
-
-      // setIsEditing(false)
-      toast.success("Post updated successfully")
-      onClose()
-    } catch (err) {
-      toast.error(err?.response?.data?.message || "Failed to update post")
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const canEdit = post.status === "queued"
-
-  return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex justify-end">
-      <div className="w-full max-w-2xl bg-background h-full shadow-xl flex flex-col transition-transform duration-300">
-        <div className="p-4 border-b flex items-center justify-between gap-2">
-          <h2 className="font-semibold">Post Details</h2>
-          <Button size="sm" variant="outline" onClick={onClose}>
-            Close
-          </Button>
-        </div>
-
-        <div className="p-6 space-y-4 overflow-y-auto">
-          {(post.imageUrl || post.imagePath) && !imageError ? (
-            <div className="overflow-hidden rounded-xl border border-border bg-muted">
-              <img
-                src={post.imageUrl || post.imagePath}
-                alt="Generated preview"
-                className="w-full max-h-80 object-contain"
-                onError={() => setImageError(true)}
-              />
-            </div>
-          ) : (
-            <div className="flex h-48 items-center justify-center rounded-xl border border-dashed border-border bg-muted text-sm text-muted-foreground">
-              No Image
-            </div>
-          )}
-
-          {isEditing ? (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Title</label>
-                <input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  placeholder="Post title"
+      <div className="filter-toolbar surface p-4 flex flex-wrap gap-3 items-center">
+        <Input
+          className="sm:max-w-xs"
+          aria-label="Search posts on this page"
+          placeholder="Search this page…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <label className="text-xs text-muted-foreground">
+          Status{" "}
+          <select value={filter} onChange={(e) => setFilter(e.target.value)}>
+            {[
+              "all",
+              "draft",
+              "generating",
+              "queued",
+              "publishing",
+              "posted",
+              "failed",
+              "review_required",
+            ].map((s) => (
+              <option key={s} value={s}>
+                {s.replaceAll("_", " ")}
+              </option>
+            ))}
+          </select>
+        </label>
+        <span className="text-xs text-muted-foreground sm:ml-auto">
+          Filters apply to this page
+        </span>
+      </div>
+      {error && (
+        <ErrorState message={error} onRetry={() => setRetry((n) => n + 1)} />
+      )}
+      {!posts ? (
+        !error && <LoadingSkeleton />
+      ) : !shown.length ? (
+        <section className="surface">
+          <EmptyState
+            title="Room for your next idea"
+            description="Create a post or adjust the filters on this page."
+          >
+            <Button asChild>
+              <Link to="/studio">Open Studio</Link>
+            </Button>
+          </EmptyState>
+        </section>
+      ) : (
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
+          {shown.map((post) => (
+            <article
+              className="surface flex flex-col overflow-hidden"
+              key={post._id}
+            >
+              {post.imageUrl && (
+                <img
+                  src={post.imageUrl}
+                  alt=""
+                  loading="lazy"
+                  className="post-card-image w-full h-40 object-contain bg-muted"
                 />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Text Description</label>
-                <textarea
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  rows={10}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  placeholder="Post description"
-                />
-              </div>
-
-              <div className="flex gap-2">
-                <Button size="sm" onClick={handleSave} disabled={saving}>
-                  {saving ? "Saving..." : "Save Changes"}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setTitle(post.title || "")
-                    setText(post.text || "")
-                    setIsEditing(false)
-                  }}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <h3 className="font-semibold text-lg">
-                {post.title}
-              </h3>
-
-              <StatusBadge
-                variant={post.status === "posted" ? "success" : post.status === "queued" ? "warning" : "error"}
-              >
-                {post.status}
-              </StatusBadge>
-
-              <div className="text-sm text-muted-foreground space-y-1">
-                <p>
-                  <strong>Publish At:</strong>{" "}
-                  {post.publishAt
-                    ? new Date(post.publishAt).toLocaleString()
-                    : "-"}
-                </p>
-                <p>
-                  <strong>Created:</strong>{" "}
-                  {new Date(post.createdAt).toLocaleString()}
-                </p>
-                <p>
-                  <strong>Attempts:</strong> {post.attempts ?? 0}
-                </p>
-              </div>
-
-              {post.url && (
-                <a
-                  href={post.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline text-sm"
-                >
-                  Open URL →
-                </a>
               )}
-
-              <div className="whitespace-pre-line text-sm leading-relaxed">
-                {post.text}
+              <div className="p-5 flex-1 flex flex-col gap-4">
+                <div className="flex items-center justify-between gap-2">
+                  <PostStatus status={post.status} />
+                  <span className="text-xs text-muted-foreground">
+                    {post.testMode
+                      ? "Test only"
+                      : post.creationMode || "automatic"}
+                  </span>
+                </div>
+                <h2 className="font-semibold text-sm">
+                  {post.title || post.topic || "Untitled draft"}
+                </h2>
+                <p className="text-sm text-muted-foreground line-clamp-4 whitespace-pre-wrap">
+                  {post.text || "Waiting for generation…"}
+                </p>
+                {post.publishAt && (
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(post.publishAt).toLocaleString(undefined, {
+                      timeZone: post.timezone || "Asia/Kolkata",
+                    })}
+                    <br />
+                    {post.timezone || "Asia/Kolkata"}
+                  </p>
+                )}
+                {post.status === "review_required" && (
+                  <p role="alert" className="text-xs text-destructive">
+                    Check LinkedIn before retrying. The publishing outcome is
+                    uncertain.
+                  </p>
+                )}
+                <div className="card-actions flex flex-wrap gap-2 mt-auto pt-3">
+                  <Button asChild variant="outline" size="sm">
+                    <Link to={"/studio?postId=" + post._id}>View / edit</Link>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={
+                      !["draft", "queued", "failed"].includes(post.status) ||
+                      busy
+                    }
+                    onClick={() => setTarget(post)}
+                  >
+                    Delete
+                  </Button>
+                </div>
               </div>
-            </>
-          )}
+            </article>
+          ))}
         </div>
-      </div>
+      )}
+      {meta && meta.totalPages > 1 && (
+        <div className="flex justify-between items-center">
+          <Button
+            variant="outline"
+            disabled={page <= 1 || busy}
+            onClick={() => {
+              setPosts(null);
+              setPage((p) => p - 1);
+            }}
+          >
+            Previous
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            Page {page} of {meta.totalPages}
+          </span>
+          <Button
+            variant="outline"
+            disabled={page >= meta.totalPages || busy}
+            onClick={() => {
+              setPosts(null);
+              setPage((p) => p + 1);
+            }}
+          >
+            Next
+          </Button>
+        </div>
+      )}
+      {target && (
+        <ConfirmationDialog
+          title="Delete this post?"
+          description="This permanently removes the post and its queued jobs. This cannot be undone."
+          confirmLabel="Delete post"
+          busy={busy}
+          onClose={() => setTarget(null)}
+          onConfirm={remove}
+        />
+      )}
     </div>
-  )
+  );
 }

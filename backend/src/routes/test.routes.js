@@ -6,14 +6,17 @@ import { enqueueSlotAllocation } from "../queue/slotAllocator.queue.js";
 import { enqueueLinkedInPost } from "../queue/linkedin.queue.js";
 import imageGenerator from "../services/imageGenerator.js";
 import logger from "../utils/logger.js";
+import { requireAuthenticatedMemberUrn } from "../utils/authenticatedAccount.js";
 
 const router = Router();
 
 // Clear all DB records
 router.post("/clear-db", async (req, res) => {
   try {
-    const fetchedResult = await FetchedContent.deleteMany({});
-    const generatedResult = await GeneratedPost.deleteMany({});
+    const linkedinMemberUrn = requireAuthenticatedMemberUrn(req, res);
+    if (!linkedinMemberUrn) return;
+    const fetchedResult = await FetchedContent.deleteMany({ linkedinMemberUrn });
+    const generatedResult = await GeneratedPost.deleteMany({ linkedinMemberUrn });
 
     res.json({
       success: true,
@@ -32,6 +35,8 @@ router.post("/clear-db", async (req, res) => {
 // Seed one dummy FetchedContent
 router.post("/seed-content", async (req, res) => {
   try {
+    const linkedinMemberUrn = requireAuthenticatedMemberUrn(req, res);
+    if (!linkedinMemberUrn) return;
     const dummyContent = new FetchedContent({
       title: "Test Article: Node.js Best Practices",
       url: "https://example.com/test-" + Date.now(),
@@ -39,6 +44,7 @@ router.post("/seed-content", async (req, res) => {
         "A comprehensive guide to Node.js best practices including error handling, async patterns, and performance optimization. Learn how to structure your applications for scalability and maintainability.",
       language: "en",
       source: "devto",
+      linkedinMemberUrn,
       timestamp: new Date(),
       status: "fetched",
     });
@@ -61,6 +67,8 @@ router.post("/seed-content", async (req, res) => {
 // Manually enqueue slot allocation
 router.post("/enqueue-slot-allocation", async (req, res) => {
   try {
+    const linkedinMemberUrn = requireAuthenticatedMemberUrn(req, res);
+    if (!linkedinMemberUrn) return;
     const job = await enqueueSlotAllocation();
 
     res.json({
@@ -80,6 +88,8 @@ router.post("/enqueue-slot-allocation", async (req, res) => {
 // Manually enqueue AI generation for a content ID
 router.post("/enqueue-ai/:contentId", async (req, res) => {
   try {
+    const linkedinMemberUrn = requireAuthenticatedMemberUrn(req, res);
+    if (!linkedinMemberUrn) return;
     const { contentId } = req.params;
 
     if (!contentId) {
@@ -89,7 +99,7 @@ router.post("/enqueue-ai/:contentId", async (req, res) => {
       });
     }
 
-    const content = await FetchedContent.findById(contentId);
+    const content = await FetchedContent.findOne({ _id: contentId, linkedinMemberUrn });
     if (!content) {
       return res.status(404).json({
         success: false,
@@ -97,7 +107,7 @@ router.post("/enqueue-ai/:contentId", async (req, res) => {
       });
     }
 
-    const job = await addAIJob(contentId);
+    const job = await addAIJob(contentId, linkedinMemberUrn);
 
     res.json({
       success: true,
@@ -116,6 +126,8 @@ router.post("/enqueue-ai/:contentId", async (req, res) => {
 // Manually enqueue LinkedIn posting for a post ID
 router.post("/enqueue-publish/:postId", async (req, res) => {
   try {
+    const linkedinMemberUrn = requireAuthenticatedMemberUrn(req, res);
+    if (!linkedinMemberUrn) return;
     const { postId } = req.params;
 
     if (!postId) {
@@ -125,7 +137,7 @@ router.post("/enqueue-publish/:postId", async (req, res) => {
       });
     }
 
-    const post = await GeneratedPost.findById(postId);
+    const post = await GeneratedPost.findOne({ _id: postId, linkedinMemberUrn });
     if (!post) {
       return res.status(404).json({
         success: false,
@@ -133,7 +145,7 @@ router.post("/enqueue-publish/:postId", async (req, res) => {
       });
     }
 
-    const job = await enqueueLinkedInPost(postId);
+    const job = await enqueueLinkedInPost(postId, linkedinMemberUrn);
 
     res.json({
       success: true,
@@ -152,7 +164,9 @@ router.post("/enqueue-publish/:postId", async (req, res) => {
 // List all GeneratedPosts with their status
 router.get("/posts-status", async (req, res) => {
   try {
-    const posts = await GeneratedPost.find()
+    const linkedinMemberUrn = requireAuthenticatedMemberUrn(req, res);
+    if (!linkedinMemberUrn) return;
+    const posts = await GeneratedPost.find({ linkedinMemberUrn })
       .select("_id title text status slot createdAt updatedAt")
       .sort({ createdAt: -1 })
       .limit(50);
@@ -183,7 +197,9 @@ router.get("/posts-status", async (req, res) => {
 // List all FetchedContent with their status
 router.get("/content-status", async (req, res) => {
   try {
-    const content = await FetchedContent.find()
+    const linkedinMemberUrn = requireAuthenticatedMemberUrn(req, res);
+    if (!linkedinMemberUrn) return;
+    const content = await FetchedContent.find({ linkedinMemberUrn })
       .select("_id title source status slot aiGenerated createdAt")
       .sort({ createdAt: -1 })
       .limit(50);
@@ -215,6 +231,8 @@ router.get("/content-status", async (req, res) => {
 // Test image generation
 router.post("/test-image", async (req, res) => {
   try {
+    const linkedinMemberUrn = requireAuthenticatedMemberUrn(req, res);
+    if (!linkedinMemberUrn) return;
     const prompt =
       "Modern AI developer workspace with holographic code editor, cyberpunk style";
 

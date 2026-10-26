@@ -1,8 +1,11 @@
 import GeneratedPost from "../models/generatedPost.model.js";
 import { addAIJob } from "../queue/ai.queue.js";
+import { requireAuthenticatedMemberUrn } from "../utils/authenticatedAccount.js";
 
 export const generateAIManually = async (req, res) => {
   const { postId } = req.params;
+  const linkedinMemberUrn = requireAuthenticatedMemberUrn(req, res);
+  if (!linkedinMemberUrn) return;
 
   if (!postId) {
     return res.status(400).json({
@@ -11,7 +14,7 @@ export const generateAIManually = async (req, res) => {
     });
   }
 
-  const post = await GeneratedPost.findById(postId);
+  const post = await GeneratedPost.findOne({ _id: postId, linkedinMemberUrn });
   if (!post) {
     return res.status(404).json({
       success: false,
@@ -19,7 +22,7 @@ export const generateAIManually = async (req, res) => {
     });
   }
 
-  const job = await addAIJob(postId);
+  const job = await addAIJob(postId, linkedinMemberUrn);
 
   return res.json({
     success: true,

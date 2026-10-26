@@ -1,44 +1,49 @@
-import ThemeToggle from "@/components/ThemeToggle"
-import LinkedInStatus from "@/components/LinkedInStatus"
-import { useLocation } from "react-router-dom"
-
-const routeNames = {
-  "/": "Dashboard",
-  "/fetcher": "Fetcher",
-  "/records": "Records",
+﻿import ThemeToggle from "@/components/ThemeToggle";
+import LinkedInStatus from "@/components/LinkedInStatus";
+import { Menu } from "lucide-react";
+import { useLocation, Link } from "react-router-dom";
+const names = {
+  "/": "Overview",
+  "/studio": "AI Post Studio",
+  "/records": "Content Library",
   "/posts": "AI Posts",
-}
-
-export default function Header() {
-  const location = useLocation()
-  const currentPage = routeNames[location.pathname] || "Dashboard"
-  const breadcrumbs = location.pathname === "/" 
-    ? ["Dashboard"]
-    : ["Dashboard", currentPage]
-
+  "/calendar": "Calendar",
+  "/analytics": "Analytics",
+  "/fetcher": "Content Sources",
+  "/settings": "Settings",
+};
+export default function Header({ open, onMenu }) {
+  const { pathname } = useLocation();
   return (
-    <header
-      role="banner"
-      className="w-full bg-background border-b border-border/40 flex items-center px-8 py-4 transition-all duration-300"
-    >
-      <nav className="flex items-center gap-2 text-sm text-muted-foreground">
-        {breadcrumbs.map((crumb, i) => (
-          <span
-            key={i}
-            className="flex items-center"
-          >
-            {i > 0 && <span className="mx-2 text-border">/</span>}
-            <span className={i === breadcrumbs.length - 1 ? "text-foreground font-medium" : ""}>
-              {crumb}
-            </span>
-          </span>
-        ))}
+    <header className="app-topbar">
+      <button
+        className="lg:hidden p-2"
+        aria-label="Open navigation"
+        aria-expanded={open}
+        aria-controls="workspace-navigation"
+        onClick={onMenu}
+      >
+        <Menu size={20} />
+      </button>
+      <nav aria-label="Breadcrumb" className="text-sm">
+        <span className="text-muted-foreground hidden sm:inline">
+          Workspace <span className="mx-3">/</span>
+        </span>
+        {names[pathname] || "Overview"}
       </nav>
-      
-      <div className="flex items-center gap-2.5 ml-auto">
+      <div className="ml-auto flex items-center gap-3">
+        <div className="hidden sm:block">
+          <LinkedInStatus />
+        </div>
         <ThemeToggle />
-        <LinkedInStatus />
+        <Link
+          to="/settings"
+          className="avatar small"
+          aria-label="Account settings"
+        >
+          in
+        </Link>
       </div>
     </header>
-  )
+  );
 }

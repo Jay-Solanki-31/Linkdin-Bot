@@ -15,14 +15,17 @@ export const linkedinQueue = new Queue("linkedin-queue", {
   }
 });
 
-export async function enqueueLinkedInPost(postId) {
+export async function enqueueLinkedInPost(postId, linkedinMemberUrn) {
   if (!postId) {
     throw new Error("postId is required");
+  }
+  if (!linkedinMemberUrn) {
+    throw new Error("linkedinMemberUrn is required");
   }
   
   return linkedinQueue.add(
     JOB_TYPES.POST_TO_LINKEDIN,
-    { postId },
+    { postId, linkedinMemberUrn },
     {
       jobId: `linkedin-post-${postId}`, 
       attempts: 3,

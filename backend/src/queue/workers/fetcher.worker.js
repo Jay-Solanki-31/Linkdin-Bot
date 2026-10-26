@@ -15,7 +15,10 @@ export default new Worker(
   "fetcher-queue",
   async (job) => {
     try {
-      const { source, keyword } = job.data;
+      const { source, keyword, linkedinMemberUrn } = job.data;
+      if (!linkedinMemberUrn) {
+        throw new Error("Fetcher job is missing account ownership");
+      }
       logger.info(
         `Fetcher job started for source: ${source}, keyword: ${keyword}`
       );
@@ -35,6 +38,7 @@ export default new Worker(
 
       let itemsToStore = rawItems.map((item) => ({
         ...item,
+        linkedinMemberUrn,
         url: normalizeFetchedUrl(item.url, source),
       }));
       let duplicatesSkipped = 0;
@@ -46,13 +50,10 @@ export default new Worker(
         duplicatesSkipped += itemsToStore.length - validItems.length;
 
         const existing = await FetchedContent.find({
+          linkedinMemberUrn,
           $or: [
             { url: { $in: validItems.map((item) => item.url) } },
-            {
-              sourceItemId: {
-                $in: validItems.map((item) => item.sourceItemId),
-              },
-            },
+            { sourceItemId: { $in: validItems.map((item) => item.sourceItemId) } },
           ],
         })
           .select("url sourceItemId")
@@ -74,12 +75,13 @@ export default new Worker(
 
         return {
           updateOne: {
-            filter: item.sourceItemId
-              ? { sourceItemId: item.sourceItemId }
-              : { url: normalizedUrl },
-            update: {
-              $set: {
-                ...item,
+              filter: item.sourceItemId
+                ? { linkedinMemberUrn, sourceItemId: item.sourceItemId }
+                : { linkedinMemberUrn, url: normalizedUrl },
+              update: {
+                $set: {
+                  ...item,
+                  linkedinMemberUrn,
                 url: normalizedUrl,
                 source,
                 expiresAt,

@@ -1,185 +1,197 @@
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { TrendingUp, Zap, Activity, Circle } from "lucide-react"
-import { DashboardSkeleton } from "@/components/ui/PostSkeleton"
-import { toast } from "sonner"
-import { fetchDashboard } from "@/api/dashboard.api"
-import { AnimatedNumber } from "@/components/ui/animated-number"
-import { StatusBadge } from "@/components/ui/status-badge"
-import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/glass-card"
-import { TrendChart } from "@/components/charts/TrenderChart"
-
+﻿import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { fetchDashboard } from "@/api/dashboard.api";
+import { useAuth } from "@/auth/AuthContext";
+import {
+  PageHeader,
+  StatCard,
+  EmptyState,
+  ErrorState,
+  LoadingSkeleton,
+} from "@/components/WorkspaceUI";
+import { TrendChart } from "@/components/charts/TrenderChart";
+import { Button } from "@/components/ui/button";
 export default function Dashboard() {
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
-
+  const { isAuthenticated, auth } = useAuth();
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(false);
+  const [retry, setRetry] = useState(0);
   useEffect(() => {
-    const loadDashboard = async () => {
+    if (!isAuthenticated) return;
+    let active = true;
+    const load = async () => {
       try {
-        const res = await fetchDashboard()
-        setData(res.data)
-        setLoading(false)
-      } catch (err) {
-        console.log("Dashboard Load Error:", err)
-        toast.error("Failed to load dashboard data")
-        setLoading(false)
+        const res = await fetchDashboard();
+        if (active) {
+          setData(res.data);
+          setError(false);
+        }
+      } catch {
+        if (active) setError(true);
       }
-    }
-
-    loadDashboard()
-    
-    const interval = setInterval(loadDashboard, 60000)
-    
-    return () => clearInterval(interval)
-  }, [])
-
-  if (loading || !data) {
-    return (
-      <DashboardSkeleton />
-    )
-  }
-
-  const stats = [
-    {
-      title: "Total Fetched Articles",
-      value: data.stats.totalFetched,
-      icon: TrendingUp,
-      gradient: "from-blue-500 to-cyan-500",
-      iconColor: "text-blue-500",
-    },
-    {
-      title: "AI Generated Posts",
-      value: data.stats.aiGeneratedCount,
-      icon: Zap,
-      gradient: "from-purple-500 to-pink-500",
-      iconColor: "text-purple-500",
-    },
-    {
-      title: "Queue Status",
-      value: data.queue.running ? "Running" : "Idle",
-      icon: Activity,
-      gradient: "from-green-500 to-emerald-500",
-      iconColor: "text-green-500",
-    },
-  ]
-
-  const chartData = data.chartData || []
-
+    };
+    load();
+    const timer = setInterval(load, 60000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [isAuthenticated, auth?.memberUrn, retry]);
+  if (error) return <ErrorState onRetry={() => setRetry((n) => n + 1)} />;
+  if (!data) return <LoadingSkeleton />;
   return (
     <div className="space-y-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Monitor your automation and system health
-        </p>
+      <PageHeader
+        title="Make your next post count."
+        description="A little inspiration. A clear plan. Your LinkedIn workspace at a glance."
+      >
+        <Button asChild>
+          <Link to="/studio">＋ Create a post</Link>
+        </Button>
+      </PageHeader>
+      <div className="hero-panel">
+        <div>
+          <p className="!text-xs !mt-0 tracking-widest">FROM IDEA TO IMPACT</p>
+          <h2 className="mt-3">Good ideas deserve to be shared.</h2>
+          <p>
+            Turn something worth reading into something worth saying. Create a
+            draft, add your perspective, and plan your next post.
+          </p>
+        </div>
+        <Button
+          asChild
+          className="bg-white text-blue-800 hover:bg-blue-50 shrink-0"
+        >
+          <Link to="/studio">Open AI Studio →</Link>
+        </Button>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {stats.map((stat, idx) => {
-          const Icon = stat.icon
-          return (
-            <div
-              key={idx}
-              className="animate-fade-in"
-              style={{ animationDelay: `${idx * 100}ms` }}
-            >
-              <GlassCard className="overflow-hidden">
-                <div className={`h-1 bg-gradient-to-r ${stat.gradient}`}></div>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      {stat.title}
-                    </CardTitle>
-                    <div className={`p-2 rounded-lg bg-gradient-to-br ${stat.gradient.replace("500", "100")} dark:from-opacity-20 dark:to-opacity-10`}>
-                      <Icon className={`w-4 h-4 ${stat.iconColor}`} />
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className={`text-3xl font-bold bg-gradient-to-r ${stat.gradient} bg-clip-text text-transparent`}>
-                    {typeof stat.value === "number" ? <AnimatedNumber value={stat.value} /> : stat.value}
-                  </p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <Circle className={`w-2 h-2 fill-current ${
-                      data.queue.running ? "text-green-500" : "text-muted-foreground"
-                    }`} />
-                    <p className="text-xs text-muted-foreground">Live updated</p>
-                  </div>
-                </CardContent>
-              </GlassCard>
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <StatCard
+          label="Articles collected"
+          value={data.stats?.totalFetched}
+          detail="Your content library"
+        />
+        <StatCard
+          label="Collected today"
+          value={data.stats?.todayFetched}
+          detail="New inspiration"
+        />
+        <StatCard
+          label="Generated posts"
+          value={data.stats?.aiGeneratedCount}
+          detail="Across all post statuses"
+        />
+        <StatCard
+          label="Processing"
+          value={data.queue?.running ? "Active" : "Idle"}
+          detail="Checked every 60 seconds"
+        />
+      </div>
+      <div className="grid xl:grid-cols-[1.7fr_1fr] gap-6">
+        <section className="surface p-6">
+          <div className="flex justify-between gap-3 mb-6">
+            <div>
+              <h2 className="section-title">Your content momentum</h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                Articles collected over the last 30 days
+              </p>
             </div>
-          )
-        })}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-        <GlassCard>
-          <GlassCardHeader>
-            <GlassCardTitle className="text-lg">Fetch Trends</GlassCardTitle>
-          </GlassCardHeader>
-          <GlassCardContent>
-            <TrendChart data={chartData} title="Last 30 Days Activity" />
-          </GlassCardContent>
-        </GlassCard>
-
-        <GlassCard>
-          <GlassCardHeader>
-            <GlassCardTitle className="text-lg">System Health</GlassCardTitle>
-          </GlassCardHeader>
-          <GlassCardContent>
-            <div className="space-y-5">
-              <div>
-                <div className="flex justify-between mb-2">
-                  <span className="text-sm font-medium text-foreground">
-                    Redis Connectiond
-                  </span>
-                  <StatusBadge 
-                    variant={data.system.redisConnected ? "success" : "error"}
-                    pulse={!!data.system.redisConnected}
-                  >
-                    {data.system.redisConnected ? "Connected" : "Disconnected"}
-                  </StatusBadge>
-                </div>
-                <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                  <div className={`h-full w-full transition-all duration-500 ${data.system.redisConnected ? "bg-green-500" : "bg-red-500"}`}></div>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between mb-2">
-                  <span className="text-sm font-medium text-foreground">
-                    Queue Status
-                  </span>
-                  <StatusBadge variant={data.queue.running ? "info" : "default"}>
-                    {data.queue.running ? "Running" : "Idle"}
-                  </StatusBadge>
-                </div>
-                <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                  <div className={`h-full transition-all duration-500 ${data.queue.running ? "w-full bg-blue-500" : "w-1/4 bg-blue-500"}`}></div>
-                </div>
-              </div>
-            </div>
-          </GlassCardContent>
-        </GlassCard>
-      </div>
-
-      <GlassCard>
-        <GlassCardHeader>
-          <GlassCardTitle className="text-lg">Recent Activity</GlassCardTitle>
-        </GlassCardHeader>
-        <GlassCardContent>
-          <div className="space-y-3">
-            {data.recentActivity.map((item, i) => (
-              <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-muted/40 border border-border/40 hover:bg-muted/60 transition-colors">
-                <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 flex-shrink-0 animate-pulse"></div>
-                <span className="text-sm text-muted-foreground">
-                  {item.title.slice(0, 60)}...
-                </span>
-              </div>
-            ))}
+            <span className="text-xs text-muted-foreground">30 days</span>
           </div>
-        </GlassCardContent>
-      </GlassCard>
+          {data.chartData?.length ? (
+            <>
+              <TrendChart data={data.chartData} />
+              <p className="text-xs text-muted-foreground mt-4">
+                Daily article counts.{" "}
+                {data.chartData.reduce((sum, row) => sum + row.value, 0)}{" "}
+                collected in this period.
+              </p>
+            </>
+          ) : (
+            <EmptyState
+              title="Your momentum starts here"
+              description="Collect articles to see daily activity."
+            />
+          )}
+        </section>
+        <section className="surface p-6">
+          <h2 className="section-title mb-5">A workspace that works for you</h2>
+          {[
+            [
+              "01",
+              "Find your inspiration",
+              "Collect articles from your favorite sources.",
+              "/fetcher",
+            ],
+            [
+              "02",
+              "Make it your own",
+              "Generate and refine a draft in Studio.",
+              "/studio",
+            ],
+            [
+              "03",
+              "Plan ahead",
+              "Review your publishing calendar.",
+              "/calendar",
+            ],
+          ].map(([n, title, description, to]) => (
+            <Link
+              key={n}
+              to={to}
+              className="flex gap-3 py-4 border-b last:border-0"
+            >
+              <span className="text-xs text-primary bg-accent rounded-lg p-2 h-fit">
+                {n}
+              </span>
+              <div>
+                <h3 className="text-sm font-medium">{title} →</h3>
+                <p className="text-xs text-muted-foreground mt-1 leading-5">
+                  {description}
+                </p>
+              </div>
+            </Link>
+          ))}
+        </section>
+      </div>
+      <section className="surface">
+        <div className="p-6 flex justify-between">
+          <h2 className="section-title">Fresh from your sources</h2>
+          <Link className="text-xs text-primary" to="/records">
+            View library →
+          </Link>
+        </div>
+        {data.recentActivity?.length ? (
+          data.recentActivity.map((item, i) => (
+            <div
+              key={item._id || i}
+              className="px-6 py-4 border-t flex items-center gap-4"
+            >
+              <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">{item.title}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {item.source}{" "}
+                  {item.createdAt &&
+                    "· " + new Date(item.createdAt).toLocaleDateString()}
+                </p>
+              </div>
+              <Button size="sm" variant="outline" asChild>
+                <Link
+                  to={item._id ? "/studio?articleId=" + item._id : "/records"}
+                >
+                  Create draft
+                </Link>
+              </Button>
+            </div>
+          ))
+        ) : (
+          <EmptyState
+            title="A fresh start"
+            description="Collect your first articles to build a library of ideas."
+          />
+        )}
+      </section>
     </div>
-  )
+  );
 }

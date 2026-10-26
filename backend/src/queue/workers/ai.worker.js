@@ -16,7 +16,10 @@ import { aiDLQ } from "../ai.dlq.queue.js";
 const worker = new Worker(
   "ai-processing-queue",
   async (job) => {
-    const { postId } = job.data;
+    const { postId, linkedinMemberUrn } = job.data;
+    if (!linkedinMemberUrn) {
+      throw new Error("AI job is missing account ownership");
+    }
     const currentAttempt = (job.attemptsMade ?? 0) + 1;
     const totalAttempts = job.opts?.attempts ?? 1;
 
@@ -26,7 +29,9 @@ const worker = new Worker(
       const post = await GeneratedPost.findOneAndUpdate(
         {
           _id: postId,
-          status: { $in: ["draft"] },
+          linkedinMemberUrn,
+          status: { $in: ["draft", "failed"] },
+          linkedinPostUrn: null,
         },
         {
           $set: {
@@ -45,32 +50,63 @@ const worker = new Worker(
         return;
       }
 
-      const content = await FetchedContent.findById(post.articleId);
+      const content = post.creationMode === "manual" && !post.articleId ? { title: post.topic, description: post.topic, source: "topic" } : await FetchedContent.findOne({
+        _id: post.articleId,
+        linkedinMemberUrn,
+      });
 
       if (!content) {
         throw new Error("Content not found");
       }
 
-      const result = await aiService.generateForContent(content);
+      // Reuse a previously generated text draft when only image generation failed.
+      // This avoids paying for another Groq request on retry.
+      const result = post.text?.trim()
+        ? {
+            text: post.text,
+            imagePrompt: post.imagePrompt || "",
+            promptType: post.promptType,
+            sourceType: post.sourceType,
+          }
+        : await aiService.generateForContent(content, post.creationMode === "manual" ? post.customPrompt : "");
 
-      logger.info("[AI] Text generated");
-      logger.info("[AI] Generating image");
+      if (post.creationMode !== "manual" && (!post.publishAt || Number.isNaN(new Date(post.publishAt).getTime()))) {
+        throw new Error("Missing or invalid publishAt");
+      }
 
-      const image = await imageGenerator.generate(result.imagePrompt, postId);
+      logger.info("[AI] Text available");
+      // Persist successful text before any external image API request.
+      post.text = result.text;
+      post.imagePrompt = result.imagePrompt || "";
+      post.promptType = result.promptType;
+      post.sourceType = result.sourceType;
+      post.title = content.title;
+      post.url = content.url;
+      await post.save();
 
-      logger.info("[AI] Image generated");
+      let image = null;
+      if (result.imagePrompt?.trim()) {
+        try {
+          logger.info("[AI] Generating image");
+          image = await imageGenerator.generate(result.imagePrompt, postId);
+          logger.info("[AI] Image generated");
+        } catch (imageError) {
+          logger.warn(`[AI] Image unavailable for ${postId}; using text-only post: ${imageError.message}`);
+        }
+      }
 
-      post.status = "queued";
+
+      post.status = post.creationMode === "manual" ? "draft" : "queued";
       post.error = null;
       post.failedStage = null;
       post.lastFailedAt = null;
       post.text = result.text;
 
-      post.imagePrompt = result.imagePrompt;
-      post.imagePath = image.imagePath;
+      post.imagePrompt = result.imagePrompt || "";
+      post.imagePath = image?.imagePath || "";
 
       post.imageUrl = "";
-      post.imageStatus = "generated";
+      post.imageStatus = image ? "generated" : "failed";
       post.promptType = result.promptType;
       post.sourceType = result.sourceType;
       post.title = content.title;
@@ -80,14 +116,15 @@ const worker = new Worker(
 
       const delay = Math.max(new Date(post.publishAt).getTime() - Date.now(), 0);
 
-      await linkedinQueue.add(
-        JOB_TYPES.POST_TO_LINKEDIN,
-        { postId },
-        {
-          jobId: `linkedin-${postId}`,
-          delay,
-        }
-      );
+      if (post.creationMode === "manual" || post.testMode || job.data.testMode) {
+        logger.info(`[AI] Leaving manual/test post ${postId} without LinkedIn publishing`);
+      } else {
+        await linkedinQueue.add(
+          JOB_TYPES.POST_TO_LINKEDIN,
+          { postId, linkedinMemberUrn: post.linkedinMemberUrn, scheduleVersion: post.scheduleVersion || 0 },
+          { jobId: `linkedin-${postId}`, delay }
+        );
+      }
 
       logger.info("[AI] Completed");
     } catch (err) {
@@ -98,7 +135,7 @@ const worker = new Worker(
       );
 
       if (currentAttempt < totalAttempts) {
-        await GeneratedPost.findByIdAndUpdate(postId, {
+        await GeneratedPost.updateOne({ _id: postId, status: "generating" }, {
           $set: {
             status: "draft",
             error: message,
@@ -128,6 +165,7 @@ worker.on("failed", async (job, err) => {
       "AI_JOB_FAILED",
       {
         postId,
+        linkedinMemberUrn: job.data.linkedinMemberUrn,
         reason: err.message,
         attemptsMade: job.attemptsMade,
         failedAt: new Date(),
@@ -137,11 +175,13 @@ worker.on("failed", async (job, err) => {
       }
     );
 
-    await GeneratedPost.findByIdAndUpdate(postId, {
-      status: "failed",
-      error: err.message,
-      failedStage: "ai",
-      lastFailedAt: new Date(),
+    await GeneratedPost.updateOne({ _id: postId, status: "generating" }, {
+      $set: {
+        status: "failed",
+        error: err.message,
+        failedStage: "ai",
+        lastFailedAt: new Date(),
+      },
     });
   } catch (e) {
     logger.error(`[AI] ${postId} DLQ push failed: ${e.message}`);

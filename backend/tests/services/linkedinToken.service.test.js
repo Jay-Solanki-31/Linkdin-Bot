@@ -1,13 +1,33 @@
 // tests/services/linkedinToken.service.test.js
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import LinkedInToken from '../../src/models/linkedinToken.model.js';
+import { getValidLinkedInToken } from '../../src/services/linkedinToken.service.js';
 
-vi.mock('../../src/models/linkedinToken.model.js');
+vi.mock('../../src/models/linkedinToken.model.js', () => ({
+  default: { findOne: vi.fn() },
+}));
 
 describe('LinkedIn Token Service', () => {
-  let tokenService;
-
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('should require an account identifier and query only that account', async () => {
+    expect(await getValidLinkedInToken()).toBeNull();
+    expect(LinkedInToken.findOne).not.toHaveBeenCalled();
+
+    LinkedInToken.findOne.mockResolvedValue({
+      accessToken: 'token-abc',
+      expiresAt: new Date(Date.now() + 3600000),
+    });
+
+    await expect(getValidLinkedInToken('urn:li:person:user-123')).resolves.toEqual({
+      expired: false,
+      token: 'token-abc',
+    });
+    expect(LinkedInToken.findOne).toHaveBeenCalledWith({
+      memberUrn: 'urn:li:person:user-123',
+    });
   });
 
   it('should store access token', async () => {

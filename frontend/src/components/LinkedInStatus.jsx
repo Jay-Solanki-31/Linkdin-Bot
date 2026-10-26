@@ -1,69 +1,29 @@
-import { useEffect, useState } from "react";
-import { getLinkedInStatus } from "@/api/linkedin";
-
+﻿import { useAuth } from "@/auth/AuthContext";
+import { Link } from "react-router-dom";
 export default function LinkedInStatus() {
-  const [auth, setAuth] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  const loadStatus = async () => {
-    try {
-      setLoading(true);
-      const data = await getLinkedInStatus();
-      setAuth(data);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadStatus();
-  }, []);
-
-  const connectLinkedIn = () => {
-    const backendUrl = import.meta.env.VITE_API_URL;
-
-    const popup = window.open(
-      `${backendUrl}/api/auth/linkedin/login`,
-      "linkedin-login",
-      "width=650,height=700"
-    );
-
-    const listener = (event) => {
-      if (event.data?.source !== "linkedin-auth") return;
-
-      if (event.data.status === "success") {
-        loadStatus();
-      }
-
-      window.removeEventListener("message", listener);
-      popup?.close();
-    };
-
-    window.addEventListener("message", listener);
-  };
-
-  if (loading) {
-    return <div className="text-xs text-muted-foreground">Checking…</div>;
-  }
-
-  if (!auth?.connected || auth?.expired) {
+  const { auth, status } = useAuth();
+  if (status === "loading")
     return (
-      <button
-        onClick={connectLinkedIn}
-        className="px-3 py-1 text-xs rounded bg-blue-600 text-white"
-      >
-        Connect LinkedIn
-      </button>
+      <span className="text-xs text-muted-foreground">
+        Checking connection…
+      </span>
     );
-  }
-
-  const daysLeft = Math.ceil(
-    (new Date(auth.expiresAt) - new Date()) / (1000 * 60 * 60 * 24)
-  );
-
+  if (status !== "authenticated")
+    return (
+      <Link to="/connect" className="text-xs text-primary">
+        Connect LinkedIn
+      </Link>
+    );
+  const days = auth?.expiresAt
+    ? Math.max(0, Math.ceil((new Date(auth.expiresAt) - new Date()) / 86400000))
+    : null;
   return (
-    <span className="text-xs text-green-600">
-      LinkedIn connected · {daysLeft}d left
+    <span className="inline-flex items-center gap-2 text-xs text-green-700 dark:text-green-400">
+      <span
+        aria-hidden="true"
+        className="w-1.5 h-1.5 rounded-full bg-current"
+      />
+      LinkedIn connected{days === null ? "" : " · " + days + "d left"}
     </span>
   );
 }

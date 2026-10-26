@@ -3,15 +3,19 @@ import axios from "axios";
 import LinkedInToken from "../../models/linkedinToken.model.js";
 import logger from "../../utils/logger.js";
 
-async function getTokenRecord() {
-  const token = await LinkedInToken.findById("linkedin_app_token");
+async function getTokenRecord(memberUrn) {
+  if (!memberUrn) {
+    throw new Error("LinkedIn account is required for publishing");
+  }
+
+  const token = await LinkedInToken.findOne({ memberUrn });
 
   if (!token?.accessToken) {
     throw new Error("LinkedIn not connected");
   }
 
-  if (!token?.memberUrn) {
-    throw new Error("LinkedIn member URN missing");
+  if (new Date() > token.expiresAt) {
+    throw new Error("LinkedIn token expired");
   }
 
   return token;
@@ -76,11 +80,7 @@ async function createPost(
 
     lifecycleState: "PUBLISHED",
 
-    content: {
-      media: {
-        id: imageUrn,
-      },
-    },
+    ...(imageUrn ? { content: { media: { id: imageUrn } } } : {}),
   };
 
   const response = await axios.post(
@@ -103,16 +103,15 @@ export async function publishToLinkedIn({
   text,
   imagePath,
   url,
+  linkedinMemberUrn,
+  beforeCreate,
 }) {
   if (!text) {
     throw new Error("Missing text");
   }
 
-  if (!imagePath) {
-    throw new Error("Missing image");
-  }
-
-  if (!fs.existsSync(imagePath)) {
+  // A missing image is intentional when the image provider is unavailable.
+  if (imagePath && !fs.existsSync(imagePath)) {
     throw new Error(`Image not found: ${imagePath}`);
   }
 
@@ -137,32 +136,22 @@ ${url}`
   const {
     accessToken,
     memberUrn,
-  } = await getTokenRecord();
+  } = await getTokenRecord(linkedinMemberUrn);
 
-  logger.info("Initializing LinkedIn image upload...");
-
-  const {
-    imageUrn,
-    uploadUrl,
-  } = await initializeImageUpload(
-    accessToken,
-    memberUrn
-  );
-
-  logger.info(`Image URN: ${imageUrn}`);
-
-  logger.info("Uploading image...");
-
-  await uploadImage(uploadUrl, imagePath);
+  let imageUrn = null;
+  if (imagePath) {
+    logger.info("Initializing LinkedIn image upload...");
+    const upload = await initializeImageUpload(accessToken, memberUrn);
+    imageUrn = upload.imageUrn;
+    logger.info(`Image URN: ${imageUrn}`);
+    await uploadImage(upload.uploadUrl, imagePath);
+  } else {
+    logger.info("Publishing text-only LinkedIn post (no image available)");
+  }
 
   logger.info("Creating LinkedIn post...");
-
-  const postUrn = await createPost(
-    accessToken,
-    memberUrn,
-    safeText,
-    imageUrn
-  );
+  await beforeCreate?.();
+  const postUrn = await createPost(accessToken, memberUrn, safeText, imageUrn);
 
   logger.info(`LinkedIn post created: ${postUrn}`);
 
@@ -179,5 +168,6 @@ ${url}`
   return {
     ok: true,
     urn: postUrn,
+    imageUploaded: Boolean(imageUrn),
   };
 }

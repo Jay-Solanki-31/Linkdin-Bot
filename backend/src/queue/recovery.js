@@ -17,9 +17,12 @@ export const recoverStuckJobs = async () => {
     const cutoff = new Date(Date.now() - STUCK_TIME);
 
     const stuckPosts = await GeneratedPost.find({
-      status: {
-        $in: ["generating", "failed"],
-      },
+      $or: [
+        { status: "generating" },
+        { status: "failed", failedStage: "ai" },
+      ],
+      linkedinPostUrn: null,
+      linkedinMemberUrn: { $type: "string" },
 
       updatedAt: {
         $lt: cutoff,
@@ -36,22 +39,18 @@ export const recoverStuckJobs = async () => {
 
       try {
 
-        await GeneratedPost.findByIdAndUpdate(post._id, {
-
-          status: "draft",
-
-          error: null,
-
-          $inc: {
-            recoveryAttempts: 1,
-          },
-
-        });
+        const claimed = await GeneratedPost.updateOne(
+          { _id: post._id, updatedAt: post.updatedAt, linkedinPostUrn: null },
+          { $set: { status: "draft", error: null, failedStage: null },
+            $inc: { recoveryAttempts: 1 } }
+        );
+        if (!claimed.modifiedCount) continue;
 
         await aiQueue.add(
           JOB_TYPES.GENERATE_POST,
           {
             postId: post._id,
+            linkedinMemberUrn: post.linkedinMemberUrn,
           },
           {
             jobId: `recovery-ai-${post._id}-${Date.now()}`,

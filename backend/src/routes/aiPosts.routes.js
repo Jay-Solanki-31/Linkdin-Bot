@@ -7,6 +7,8 @@ import logger from "../utils/logger.js";
 
 const router = express.Router();
 
+const getMemberUrn = (req) => req.session?.linkedinMemberUrn;
+
 const getImageUrl = (req, imagePath) => {
   if (!imagePath || typeof imagePath !== "string") {
     return null;
@@ -32,18 +34,24 @@ const getImageUrl = (req, imagePath) => {
 
 router.get("/", async (req, res) => {
   try {
-    const page = Math.max(parseInt(req.query.page) || 1, 1);
-    const limit = Math.min(parseInt(req.query.limit) || 10, 50);
-    const skip = (page - 1) * limit;
+    const linkedinMemberUrn = getMemberUrn(req);
+    if (!linkedinMemberUrn) {
+      return res.status(401).json({ message: "LinkedIn account is not connected" });
+    }
 
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.max(1, Math.min(parseInt(req.query.limit) || 10, 50));
+    const skip = (page - 1) * limit;
+    
     const [items, total, statusCounts] = await Promise.all([
-      GeneratedPost.find()
+      GeneratedPost.find({ linkedinMemberUrn })
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .populate("articleId", "title source"),
-      GeneratedPost.countDocuments(),
+      GeneratedPost.countDocuments({ linkedinMemberUrn }),
       GeneratedPost.aggregate([
+        { $match: { linkedinMemberUrn } },
         {
           $group: {
             _id: "$status",
@@ -68,6 +76,10 @@ router.get("/", async (req, res) => {
         status: post.status,
         attempts: post.attempts,
         publishAt: post.publishAt,
+        timezone: post.timezone,
+        creationMode: post.creationMode || "automatic",
+        testMode: post.testMode,
+        error: post.error,
         createdAt: post.createdAt,
         updatedAt: post.updatedAt,
         imagePath: post.imagePath,
@@ -90,10 +102,15 @@ router.get("/", async (req, res) => {
 
 router.put("/:id", async (req, res) => {
   try {
+    const linkedinMemberUrn = getMemberUrn(req);
+    if (!linkedinMemberUrn) {
+      return res.status(401).json({ success: false, message: "LinkedIn account is not connected" });
+    }
+
     const { id } = req.params;
     const { title, text } = req.body;
 
-    const post = await GeneratedPost.findById(id);
+    const post = await GeneratedPost.findOne({ _id: id, linkedinMemberUrn });
     if (!post) {
       return res
         .status(404)
@@ -107,37 +124,36 @@ router.put("/:id", async (req, res) => {
       });
     }
 
-    if (post.status !== "queued") {
+    if (!["draft", "queued"].includes(post.status)) {
       return res.status(400).json({
         success: false,
         message: "Only queued posts can be edited",
       });
     }
 
-    post.set({
-      title: title ?? post.title,
-      text: text ?? post.text,
-    });
+    if ((text !== undefined && (typeof text !== "string" || !text.trim() || text.length > 3000)) || (title !== undefined && (typeof title !== "string" || title.length > 300))) return res.status(400).json({message: "Invalid post text or title"});
+    const updated = await GeneratedPost.findOneAndUpdate({ _id: id, linkedinMemberUrn, status: { $in: ["draft", "queued"] } }, { $set: { text: text ?? post.text, title: title ?? post.title } }, { returnDocument: "after" });
+    if (!updated) return res.status(409).json({message: "Post is no longer editable"});
+    return res.json({success: true, data: updated});
 
-    await post.save();
-
-    return res.json({
-      success: true,
-      data: post,
-    });
   } catch (err) {
     res.status(500).json({
       success: false,
-      error: err.message,
+      message: "Failed to update post",
     });
   }
 });
 
 router.delete("/:id", async (req, res) => {
   try {
+    const linkedinMemberUrn = getMemberUrn(req);
+    if (!linkedinMemberUrn) {
+      return res.status(401).json({ success: false, message: "LinkedIn account is not connected" });
+    }
+
     const { id } = req.params;
 
-    const post = await GeneratedPost.findById(id);
+    const post = await GeneratedPost.findOne({ _id: id, linkedinMemberUrn });
     if (!post) {
       return res.status(404).json({
         success: false,
@@ -153,13 +169,16 @@ router.delete("/:id", async (req, res) => {
       });
     }
 
+    if (!["draft", "queued", "failed"].includes(post.status)) return res.status(409).json({message: "This post cannot be deleted"});
+    const removed = await GeneratedPost.findOneAndDelete({ _id: id, linkedinMemberUrn, status: { $in: ["draft", "queued", "failed"] } });
+    if (!removed) return res.status(409).json({message: "Post changed; refresh before deleting"});
     // remove BullMQ delayed job
-    const job = await linkedinQueue.getJob(`linkedin-${id}`);
-
-    if (job) {
-      await job.remove();
-
-      logger.info(`Removed BullMQ job for post ${id}`);
+    for (const jobId of [`linkedin-post-${id}`, `linkedin-${id}`]) {
+      const job = await linkedinQueue.getJob(jobId);
+      if (job) {
+        await job.remove();
+        logger.info(`Removed BullMQ job for post ${id}`);
+      }
     }
 
     if (post.imagePath && fs.existsSync(post.imagePath)) {
@@ -171,7 +190,7 @@ router.delete("/:id", async (req, res) => {
       }
     }
 
-    await post.deleteOne();
+
 
     return res.json({
       success: true,

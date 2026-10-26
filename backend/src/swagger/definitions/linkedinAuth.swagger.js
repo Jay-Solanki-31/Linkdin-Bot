@@ -54,7 +54,7 @@
  *     tags:
  *       - LinkedIn Auth
  *     summary: Get LinkedIn authentication status
- *     description: Check if LinkedIn OAuth token is currently valid and connected
+ *     description: Check whether the LinkedIn account connected to the current session has a valid token
  *     responses:
  *       200:
  *         description: Authentication status retrieved successfully

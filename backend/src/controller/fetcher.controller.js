@@ -2,9 +2,12 @@
 import { fetcherQueue } from "../queue/fetcher.queue.js";
 import FetcherService from "../modules/fetchers/fetcher.service.js";
 import FetchedContent from  "../models/fetchedContent.model.js"
+import { requireAuthenticatedMemberUrn } from "../utils/authenticatedAccount.js";
 
 export const startFetch = async (req, res) => {
   const { source } = req.params;
+  const linkedinMemberUrn = requireAuthenticatedMemberUrn(req, res);
+  if (!linkedinMemberUrn) return;
 
   if (!source) {
     return res.status(400).json({ success: false, message: "Source is required" });
@@ -22,7 +25,7 @@ export const startFetch = async (req, res) => {
   // Enqueue fetch job; worker will perform DB interactions.
 const job = await fetcherQueue.add(
   "FETCH_CONTENT",
-  { source },
+  { source, linkedinMemberUrn },
   { jobId: `fetch-${source}-${Date.now()}` }
 );
 
@@ -44,6 +47,9 @@ export const getFetchedData = async (req, res) => {
     const pageSize = parseInt(limit); 
 
     const filter = {};
+    const linkedinMemberUrn = requireAuthenticatedMemberUrn(req, res);
+    if (!linkedinMemberUrn) return;
+    filter.linkedinMemberUrn = linkedinMemberUrn;
 
     if (source) {
       filter.source = source;

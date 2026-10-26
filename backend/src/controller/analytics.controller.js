@@ -3,9 +3,12 @@ import {
   getPostAnalytics,
   getPostsAnalytics
 } from "../services/analytics.service.js";
+import { requireAuthenticatedMemberUrn } from "../utils/authenticatedAccount.js";
 
 export async function syncAnalytics(req, res) {
   try {
+    const linkedinMemberUrn = requireAuthenticatedMemberUrn(req, res);
+    if (!linkedinMemberUrn) return;
 
     const { analytics = [] } = req.body;
 
@@ -32,6 +35,8 @@ export async function syncAnalytics(req, res) {
 
           reposts:
             item.metrics.reposts || 0,
+
+          linkedinMemberUrn,
 
           impressions:
             item.metrics.impressions || 0,
@@ -64,8 +69,11 @@ export async function getAnalyticsHistory(
   res
 ) {
   try {
+    const linkedinMemberUrn = requireAuthenticatedMemberUrn(req, res);
+    if (!linkedinMemberUrn) return;
     const data = await getPostAnalytics(
-      decodeURIComponent(req.params.urn)
+      decodeURIComponent(req.params.urn),
+      linkedinMemberUrn
     );
 
     return res.json({
@@ -85,9 +93,11 @@ export async function getAnalyticsPosts(
   res
 ) {
   try {
+    const linkedinMemberUrn = requireAuthenticatedMemberUrn(req, res);
+    if (!linkedinMemberUrn) return;
 
     const data =
-      await getPostsAnalytics();
+      await getPostsAnalytics(linkedinMemberUrn);
 
     return res.json({
       success: true,

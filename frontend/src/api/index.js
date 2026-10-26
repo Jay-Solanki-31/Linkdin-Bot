@@ -6,4 +6,15 @@ const api = axios.create({
   withCredentials: true,
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 && typeof window !== "undefined") {
+      error.authHandled = true;
+      window.dispatchEvent(new CustomEvent("linkedin-auth:unauthorized"));
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default api;

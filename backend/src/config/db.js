@@ -1,7 +1,4 @@
 import mongoose from "mongoose";
-import dotenv from "dotenv";
-
-dotenv.config();
 
 mongoose.set("strictQuery", true);
 mongoose.set("bufferCommands", false);
@@ -20,12 +17,12 @@ export async function connectDB() {
     }
 
     connectionPromise = mongoose.connect(uri, {
+      autoIndex: process.env.NODE_ENV !== "production",
       serverSelectionTimeoutMS: 10000,
       socketTimeoutMS: 45000,
       connectTimeoutMS: 10000,
     });
   }
-
   await connectionPromise; 
   console.info("[DB] MongoDB connected");
   return mongoose.connection;

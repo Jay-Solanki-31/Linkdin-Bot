@@ -7,15 +7,21 @@ import logger from "../../utils/logger.js";
 export default new Worker(
   "linkedin-queue",
   async (job) => {
+    const { postId, linkedinMemberUrn } = job.data;
+    let attempted = false;
     try {
-      const { postId } = job.data;
+      if (!linkedinMemberUrn) return;
       logger.info(`Processing LinkedIn job: ${postId}`);
 
       const post = await GeneratedPost.findOneAndUpdate(
         {
           _id: postId,
-          status: { $nin: ["posted", "publishing"] },
-          linkedinPostUrn: { $exists: false },
+          testMode: { $ne: true },
+          scheduleVersion: (job.data.scheduleVersion || 0) === 0 ? { $in: [0, null] } : job.data.scheduleVersion,
+          status: { $in: ["queued", "failed"] },
+          failedStage: { $in: [null, "linkedin"] },
+          linkedinPostUrn: null,
+          linkedinMemberUrn,
           publishAt: { $lte: new Date() },
         },
         { $set: { status: "publishing" } },
@@ -29,13 +35,26 @@ export default new Worker(
         return;
       }
 
+      if (!post.linkedinMemberUrn || !linkedinMemberUrn || linkedinMemberUrn !== post.linkedinMemberUrn) {
+        throw new Error("LinkedIn account does not match the post owner");
+      }
+      if (!post.text?.trim()) {
+        throw new Error("Post text missing; refusing to publish");
+      }
+
 
       logger.info(`Publishing post ${postId} to LinkedIn...`);
 
       const result = await publishToLinkedIn({
+        beforeCreate: async () => {
+          const marked = await GeneratedPost.updateOne({ _id: postId, linkedinMemberUrn, status: "publishing" }, { $set: { publishAttemptedAt: new Date() } });
+          if (!marked.modifiedCount && !marked.matchedCount) throw new Error("Publishing claim is no longer valid");
+          attempted = true;
+        },
         text: post.text,
         imagePath: post.imagePath,
         url: post.url,
+        linkedinMemberUrn: post.linkedinMemberUrn,
       });
 
       const urn = result?.urn;
@@ -49,7 +68,7 @@ export default new Worker(
           status: "posted",
           linkedinPostUrn: urn,
           linkedinPostUrl:`https://www.linkedin.com/feed/update/${urn}/`,
-          imageStatus: "uploaded",
+          imageStatus: result.imageUploaded ? "uploaded" : post.imageStatus,
           error: null,
           postedAt: new Date(),
           expiresAt: new Date(
@@ -63,15 +82,19 @@ export default new Worker(
     } catch (err) {
       logger.error(`Publishing failed for ${postId}: ${err.message}`);
 
-      await GeneratedPost.findByIdAndUpdate(postId, {
+      const retryable = !/token expired|not connected|account does not match|post text missing/i.test(err.message || "");
+      const willRetry = !attempted && retryable && (job.attemptsMade + 1) < (job.opts?.attempts ?? 1);
+
+      await GeneratedPost.updateOne({ _id: postId, status: "publishing" }, {
         $set: {
-          status: "failed",
+          status: attempted ? "review_required" : willRetry ? "queued" : "failed",
+          failedStage: "linkedin",
           error: err.message?.slice(0, 512),
         },
         $inc: { attempts: 1 },
       });
 
-      throw err;
+      if (willRetry) throw err;
     }
   },
   {

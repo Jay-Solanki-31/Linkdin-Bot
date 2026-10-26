@@ -12,12 +12,17 @@ export const slotAllocatorQueue = new Queue("slot-allocator-queue", {
   },
 });
 
-export const enqueueSlotAllocation = async () => {
+export const enqueueSlotAllocation = async ({ memberUrn, dryRun = false, testMode = false } = {}) => {
+  if (memberUrn && (typeof memberUrn !== "string" || !memberUrn.trim())) {
+    throw new Error("memberUrn must be a non-empty string");
+  }
+  const dateKey = new Date().toISOString().slice(0, 10);
+  const ownerKey = memberUrn ? encodeURIComponent(memberUrn) : "all-accounts";
   return slotAllocatorQueue.add(
     JOB_TYPES.ALLOCATE_SLOTS,
-    {},
+    { ...(memberUrn ? { memberUrn } : {}), dryRun: Boolean(dryRun), testMode: Boolean(testMode) },
     {
-      jobId: `allocate-slots-${new Date().toISOString().slice(0,10)}`,
+      jobId: `allocate-slots-${ownerKey}-${dateKey}`,
       attempts: 1,
       removeOnComplete: { age: 3600, count: 20 },
       removeOnFail: { count: 10 },

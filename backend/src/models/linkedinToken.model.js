@@ -1,9 +1,9 @@
 import mongoose from "mongoose";
 
 const LinkedInTokenSchema = new mongoose.Schema({
-  _id: {
+  accountId: {
     type: String,
-    default: "linkedin_app_token",
+    required: true,
   },
 
   accessToken: {
@@ -11,9 +11,10 @@ const LinkedInTokenSchema = new mongoose.Schema({
     required: true,
   },
 
-  memberUrn :{
+  memberUrn: {
     type: String,
-    required: true
+    required: true,
+    unique: true,
   },
   
   expiresAt: {
@@ -21,6 +22,8 @@ const LinkedInTokenSchema = new mongoose.Schema({
     required: true,
   },
 
+  automationEnabled: { type: Boolean, default: true },
+  timezone: { type: String, default: "Asia/Kolkata" },
   memberId: String,
   profileName: String,
 
@@ -28,8 +31,10 @@ const LinkedInTokenSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now },
 });
 
+LinkedInTokenSchema.index({ accountId: 1, memberUrn: 1 }, { unique: true });
+
 LinkedInTokenSchema.pre("save", function () {
   this.updatedAt = new Date();
 });
 
-export default mongoose.model("LinkedInToken", LinkedInTokenSchema);
+export default mongoose.models.LinkedInToken || mongoose.model("LinkedInToken", LinkedInTokenSchema);

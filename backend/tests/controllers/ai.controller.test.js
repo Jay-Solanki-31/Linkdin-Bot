@@ -14,6 +14,7 @@ describe('AI Controller', () => {
     req = {
       params: { postId: '123' },
       body: {},
+      session: { linkedinMemberUrn: 'urn:li:person:user-123' },
     };
     res = {
       status: vi.fn().mockReturnThis(),
@@ -36,7 +37,7 @@ describe('AI Controller', () => {
     });
 
     it('should return 404 if post not found', async () => {
-      GeneratedPost.findById.mockResolvedValue(null);
+      GeneratedPost.findOne.mockResolvedValue(null);
 
       await generateAIManually(req, res);
 
@@ -51,12 +52,16 @@ describe('AI Controller', () => {
       const mockPost = { _id: '123', title: 'Test Post' };
       const mockJob = { id: 'job-456' };
 
-      GeneratedPost.findById.mockResolvedValue(mockPost);
+      GeneratedPost.findOne.mockResolvedValue(mockPost);
       aiQueue.addAIJob.mockResolvedValue(mockJob);
 
       await generateAIManually(req, res);
 
-      expect(aiQueue.addAIJob).toHaveBeenCalledWith('123');
+      expect(GeneratedPost.findOne).toHaveBeenCalledWith({
+        _id: '123',
+        linkedinMemberUrn: 'urn:li:person:user-123',
+      });
+      expect(aiQueue.addAIJob).toHaveBeenCalledWith('123', 'urn:li:person:user-123');
       expect(res.json).toHaveBeenCalledWith({
         success: true,
         message: 'AI generation job queued',
@@ -67,14 +72,14 @@ describe('AI Controller', () => {
 
     it('should handle database errors', async () => {
       const error = new Error('Database error');
-      GeneratedPost.findById.mockRejectedValue(error);
+      GeneratedPost.findOne.mockRejectedValue(error);
 
       await expect(generateAIManually(req, res)).rejects.toThrow('Database error');
     });
 
     it('should handle queue errors', async () => {
       const mockPost = { _id: '123' };
-      GeneratedPost.findById.mockResolvedValue(mockPost);
+      GeneratedPost.findOne.mockResolvedValue(mockPost);
       aiQueue.addAIJob.mockRejectedValue(new Error('Queue error'));
 
       await expect(generateAIManually(req, res)).rejects.toThrow('Queue error');

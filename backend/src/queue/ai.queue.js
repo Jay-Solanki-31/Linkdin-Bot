@@ -11,10 +11,13 @@ export const aiQueue = new Queue("ai-processing-queue", {
     removeOnFail: {count:10},
   },
 });
-export const addAIJob = async (postId) => {
+export const addAIJob = async (postId, linkedinMemberUrn) => {
+  if (!postId || !linkedinMemberUrn) {
+    throw new Error("postId and linkedinMemberUrn are required");
+  }
   return aiQueue.add(
     JOB_TYPES.GENERATE_POST,
-    { postId },
+    { postId, linkedinMemberUrn },
     { jobId: `ai-${postId}` }
   );
 };

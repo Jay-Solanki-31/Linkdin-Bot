@@ -1,7 +1,9 @@
 import LinkedInToken from "../models/linkedinToken.model.js";
 
-export async function getValidLinkedInToken() {
-  const tokenDoc = await LinkedInToken.findOne();
+export async function getValidLinkedInToken(memberUrn) {
+  if (!memberUrn) return null;
+
+  const tokenDoc = await LinkedInToken.findOne({ memberUrn });
 
   if (!tokenDoc) return null;
 

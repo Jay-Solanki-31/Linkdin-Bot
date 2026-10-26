@@ -1,82 +1,134 @@
-import { NavLink } from "react-router-dom"
+﻿import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
   Download,
+  Library,
+  WandSparkles,
   FileText,
-  Zap,
-  ChevronLeft,
-  ChevronRight,
   BarChart3,
-} from "lucide-react"
-import { useState } from "react"
-import { cn } from "@/lib/utils"
-
-export default function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false)
-
-  const navItems = [
-    { label: "Dashboard", path: "/", icon: LayoutDashboard },
-    { label: "Fetcher", path: "/fetcher", icon: Download },
-    { label: "Records", path: "/records", icon: FileText },
-    { label: "AI Posts", path: "/posts", icon: Zap },
-    { label: "Analytics", path: "/analytics", icon: BarChart3 }
-  ]
-
+  CalendarDays,
+  Settings,
+  PanelLeftClose,
+} from "lucide-react";
+import { useEffect, useRef } from "react";
+import useMediaQuery from "@/hooks/useMediaQuery";
+import LinkedInStatus from "@/components/LinkedInStatus";
+const items = [
+  ["Overview", "/", LayoutDashboard],
+  ["AI Post Studio", "/studio", WandSparkles],
+  ["Content Library", "/records", Library],
+  ["AI Posts", "/posts", FileText],
+  ["Calendar", "/calendar", CalendarDays],
+  ["Analytics", "/analytics", BarChart3],
+  ["Content Sources", "/fetcher", Download],
+  ["Settings", "/settings", Settings],
+];
+export default function Sidebar({ open, onClose }) {
+  const sidebarRef = useRef(null);
+  const desktop = useMediaQuery("(min-width: 1024px)");
+  const modalOpen = open && !desktop;
+  useEffect(() => {
+    if (!modalOpen) return;
+    const previous = document.activeElement;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const panel = sidebarRef.current;
+    const controls = () => [
+      ...panel.querySelectorAll("a[href],button:not([disabled])"),
+    ];
+    controls()[0]?.focus();
+    const trap = (event) => {
+      if (event.key !== "Tab") return;
+      const elements = controls();
+      const first = elements[0],
+        last = elements[elements.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+    panel.addEventListener("keydown", trap);
+    return () => {
+      panel.removeEventListener("keydown", trap);
+      document.body.style.overflow = overflow;
+      previous?.focus();
+    };
+  }, [modalOpen]);
   return (
-    <aside
-      className={cn(
-        "min-h-screen bg-background border-r border-border/40 flex flex-col transition-all duration-300",
-        collapsed ? "w-20" : "w-64"
-      )}
-    >
-      <div className="p-6 flex items-center justify-between">
-        {!collapsed && (
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-              <span className="text-white font-bold text-sm">LB</span>
-            </div>
-            <div>
-              <h2 className="text-sm font-semibold">LinkedIn Bot</h2>
-              <p className="text-xs text-muted-foreground">Automation</p>
-            </div>
-          </div>
-        )}
+    <>
+      {modalOpen && (
         <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="p-1.5 rounded-md hover:bg-muted/50 transition-colors"
-        >
-          {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-        </button>
-      </div>
-
-      <nav className="flex flex-col gap-1 flex-1 px-4">
-        {navItems.map((item) => {
-          const Icon = item.icon
-          return (
+          className="nav-overlay"
+          onClick={onClose}
+          aria-label="Close navigation"
+          tabIndex={-1}
+        />
+      )}
+      <aside
+        ref={sidebarRef}
+        role={modalOpen ? "dialog" : undefined}
+        aria-modal={modalOpen ? true : undefined}
+        aria-hidden={!desktop && !open ? true : undefined}
+        inert={!desktop && !open}
+        aria-label="Workspace navigation"
+        id="workspace-navigation"
+        className={`app-sidebar ${open ? "is-open" : ""}`}
+      >
+        <div className="brand">
+          <div className="brand-icon">
+            in<span>✦</span>
+          </div>
+          <div>
+            LinkedIn Bot<p>CONTENT WORKSPACE</p>
+          </div>
+          <button
+            className="lg:hidden ml-auto p-2"
+            aria-label="Close navigation"
+            onClick={onClose}
+          >
+            <PanelLeftClose size={20} />
+          </button>
+        </div>
+        <p className="eyebrow px-6 mb-3">CREATE & GROW</p>
+        <nav aria-label="Main navigation">
+          {items.map(([label, path, Icon]) => (
             <NavLink
-              key={item.path}
-              to={item.path}
+              end={path === "/"}
+              key={path}
+              to={path}
+              onClick={onClose}
               className={({ isActive }) =>
-                cn(
-                  "px-3.5 py-2.5 rounded-md flex items-center gap-3 text-sm font-medium transition-all duration-200",
-                  isActive
-                    ? "bg-blue-600/10 text-blue-600"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-                  collapsed && "justify-center px-2.5"
-                )
+                `nav-item ${isActive ? "active" : ""}`
               }
             >
-              <Icon className="w-4 h-4 flex-shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
+              <Icon size={18} />
+              <span>{label}</span>
             </NavLink>
-          )
-        })}
-      </nav>
-
-      <div className={cn("pt-6 border-t text-xs text-muted-foreground", collapsed ? "px-2 text-center" : "px-6")}>
-        {!collapsed && `© ${new Date().getFullYear()} LinkedIn Bot`}
-        {collapsed && "©"}
-      </div>
-    </aside>
-  )
+          ))}
+        </nav>
+        <div className="sidebar-note">
+          <span className="text-primary">✦</span>
+          <p className="font-medium mt-2">
+            A little consistency.
+            <br />A bigger presence.
+          </p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Ideas, drafts, and your next great post. All in one place.
+          </p>
+          <NavLink to="/studio" onClick={onClose}>
+            Create a post →
+          </NavLink>
+        </div>
+        <div className="sidebar-footer">
+          <div className="sm:hidden mb-4">
+            <LinkedInStatus />
+          </div>
+          Your voice. Thoughtfully amplified.
+        </div>
+      </aside>
+    </>
+  );
 }

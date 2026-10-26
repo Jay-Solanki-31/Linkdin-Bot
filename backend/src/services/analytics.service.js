@@ -13,7 +13,10 @@ export async function saveAnalyticsSnapshot(payload) {
     reposts = 0,
 
     collectedAt,
+    linkedinMemberUrn,
   } = payload;
+
+  if (!linkedinMemberUrn) throw new Error("LinkedIn account is required");
 
   console.log(
     "Looking for post:",
@@ -23,6 +26,7 @@ export async function saveAnalyticsSnapshot(payload) {
   const post =
     await GeneratedPost.findOne({
       linkedinPostUrn,
+      linkedinMemberUrn,
     });
 
 
@@ -41,6 +45,7 @@ export async function saveAnalyticsSnapshot(payload) {
   const latest =
     await PostAnalytics.findOne({
       linkedinPostUrn,
+      linkedinMemberUrn,
     }).sort({
       collectedAt: -1,
     });
@@ -76,6 +81,7 @@ export async function saveAnalyticsSnapshot(payload) {
   });
   return PostAnalytics.create({
     postId: post._id,
+    linkedinMemberUrn,
     linkedinPostUrn,
     linkedinPostUrl:
       linkedinPostUrl ||
@@ -94,22 +100,22 @@ export async function saveAnalyticsSnapshot(payload) {
   });
 }
 
-export async function getPostAnalytics(
-  linkedinPostUrn
-) {
+export async function getPostAnalytics(linkedinPostUrn, linkedinMemberUrn) {
   return PostAnalytics.find({
     linkedinPostUrn,
+    linkedinMemberUrn,
   }).sort({
     collectedAt: 1,
   });
 }
 
 
-export async function getPostsAnalytics() {
+export async function getPostsAnalytics(linkedinMemberUrn) {
 
   const posts =
     await GeneratedPost.find({
       status: "posted",
+      linkedinMemberUrn,
       linkedinPostUrn: {
         $exists: true,
       },
@@ -130,7 +136,8 @@ export async function getPostsAnalytics() {
         $match: {
           linkedinPostUrn: {
             $in: urns
-          }
+          },
+          linkedinMemberUrn,
         }
       },
       {
