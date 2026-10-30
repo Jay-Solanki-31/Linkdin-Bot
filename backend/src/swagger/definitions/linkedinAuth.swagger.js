@@ -63,6 +63,16 @@
  *             schema:
  *               type: object
  *               properties:
+ *                 memberUrn:
+ *                   type: string
+ *                   description: Immutable account identifier
+ *                 displayName:
+ *                   type: string
+ *                   description: Connected name or LinkedIn account fallback
+ *                 profilePicture:
+ *                   type: string
+ *                   format: uri
+ *                   description: Optional HTTPS avatar URL
  *                 connected:
  *                   type: boolean
  *                   description: Whether LinkedIn is currently connected

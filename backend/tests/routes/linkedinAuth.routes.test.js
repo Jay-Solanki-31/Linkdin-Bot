@@ -134,6 +134,9 @@ describe("LinkedIn OAuth routes", () => {
     const savedAccount = {
       accountId,
       memberUrn: "urn:li:person:test-member",
+      displayName: "Test Member",
+      profilePicture: "https://example.com/avatar.png",
+      accessToken: "private-token",
       expiresAt: new Date(Date.now() + 60_000)
     };
     axios.post.mockResolvedValue({
@@ -142,7 +145,7 @@ describe("LinkedIn OAuth routes", () => {
     });
     axios.get.mockResolvedValue({
       status: 200,
-      data: { sub: "test-member" }
+      data: { sub: "test-member", name: "Test Member", given_name: "Test", family_name: "Member", picture: "https://example.com/avatar.png" }
     });
     LinkedInToken.findOneAndUpdate.mockResolvedValue(savedAccount);
 
@@ -154,8 +157,8 @@ describe("LinkedIn OAuth routes", () => {
     expect(html).toContain('"status":"success"');
     expect(html).toContain("window.close()");
     expect(LinkedInToken.findOneAndUpdate).toHaveBeenCalledWith(
-      { accountId, memberUrn: "urn:li:person:test-member" },
-      expect.objectContaining({ $set: expect.objectContaining({ accountId }) }),
+      { memberUrn: "urn:li:person:test-member" },
+      expect.objectContaining({ $setOnInsert: expect.objectContaining({ accountId }) }),
       expect.objectContaining({ upsert: true })
     );
 
@@ -164,7 +167,11 @@ describe("LinkedIn OAuth routes", () => {
     const statusResponse = await fetch(`${baseUrl}/api/auth/linkedin/status`, {
       headers: { cookie: callbackCookie }
     });
-    await expect(statusResponse.json()).resolves.toMatchObject({ connected: true });
+    const status = await statusResponse.json();
+    expect(status).toMatchObject({ connected: true, displayName: "Test Member", profilePicture: "https://example.com/avatar.png" });
+    expect(JSON.stringify(status)).not.toContain("private-token");
+    expect(status).not.toHaveProperty("accessToken");
+    expect(LinkedInToken.findOneAndUpdate.mock.calls[0][1].$set).toMatchObject({ displayName: "Test Member", givenName: "Test", familyName: "Member" });
   });
 
   it("stores independent account IDs for separate login sessions", async () => {
@@ -194,11 +201,51 @@ describe("LinkedIn OAuth routes", () => {
 
     const accountFilters = LinkedInToken.findOneAndUpdate.mock.calls.map(([filter]) => filter);
     expect(accountFilters).toHaveLength(2);
-    expect(accountFilters[0].accountId).not.toBe(accountFilters[1].accountId);
+    expect(LinkedInOAuthTransaction.create.mock.calls[0][0].accountId).not.toBe(LinkedInOAuthTransaction.create.mock.calls[1][0].accountId);
     expect(accountFilters.map(({ memberUrn }) => memberUrn)).toEqual([
       "urn:li:person:member-one",
       "urn:li:person:member-two"
     ]);
+  });
+
+  it("reconnects by immutable identity and updates names without inserting a second record", async () => {
+    const records = new Map();
+    LinkedInToken.findOne.mockImplementation(async ({ memberUrn }) => records.get(memberUrn));
+    LinkedInToken.findOneAndUpdate.mockImplementation(async (filter, update) => {
+      const doc = { ...(records.has(filter.memberUrn) ? records.get(filter.memberUrn) : update.$setOnInsert), ...update.$set };
+      records.set(filter.memberUrn, doc);
+      return doc;
+    });
+    axios.post.mockResolvedValue({ data: { access_token: "secret", expires_in: 3600 } });
+    for (const name of ["Alice", "Alice Updated", "Bob"]) {
+      const login = await beginOAuth();
+      axios.get.mockResolvedValueOnce({ data: { sub: name === "Bob" ? "bob" : "alice", name } });
+      expect(await (await callback(login.cookie, { code: "code", state: login.state })).text()).toContain('"status":"success"');
+    }
+    expect(records.size).toBe(2);
+    expect(records.get("urn:li:person:alice").displayName).toBe("Alice Updated");
+    expect(records.get("urn:li:person:bob").displayName).toBe("Bob");
+  });
+
+  it("keeps a valid connection when optional profile fields are missing", async () => {
+    const login = await beginOAuth();
+    axios.post.mockResolvedValue({ data: { access_token: "secret", expires_in: 3600 } });
+    axios.get.mockResolvedValue({ data: { sub: "known" } });
+    LinkedInToken.findOneAndUpdate.mockImplementation(async (_, update) => update.$set);
+    expect(await (await callback(login.cookie, { code: "code", state: login.state })).text()).toContain('"status":"success"');
+    expect(LinkedInToken.findOneAndUpdate.mock.calls[0][1].$set.displayName).toBe("");
+  });
+
+  it("recovers a failed profile lookup only with a verified existing identity", async () => {
+    const login = await beginOAuth();
+    axios.post.mockResolvedValue({ data: { access_token: "secret", expires_in: 3600 } });
+    axios.get.mockRejectedValueOnce(new Error("secret must never be logged"))
+      .mockResolvedValueOnce({ data: { id: "known" } });
+    const existing = { memberUrn: "urn:li:person:known", accountId: "original", displayName: "Known" };
+    LinkedInToken.findOne.mockResolvedValue(existing);
+    LinkedInToken.findOneAndUpdate.mockResolvedValue(existing);
+    expect(await (await callback(login.cookie, { code: "code", state: login.state })).text()).toContain('"status":"success"');
+    expect(LinkedInToken.findOneAndUpdate.mock.calls[0][1].$set).not.toHaveProperty("displayName");
   });
 
   it("keeps OAuth state validation and returns a visible failure for a mismatched state", async () => {
@@ -266,7 +313,7 @@ describe("LinkedIn OAuth routes", () => {
       code: "test-code",
       state: nextLogin.state
     });
-    expect(await profileResponse.text()).toContain("LinkedIn profile lookup failed (HTTP 401): Invalid token");
+    expect(await profileResponse.text()).toContain("LinkedIn identity could not be verified");
   });
 
   it("reports MongoDB failures and escapes their message before embedding it in script", async () => {
@@ -277,15 +324,15 @@ describe("LinkedIn OAuth routes", () => {
     });
     axios.get.mockResolvedValue({
       status: 200,
-      data: { sub: "test-member" }
+      data: { sub: "test-member", name: "Test Member", given_name: "Test", family_name: "Member", picture: "https://example.com/avatar.png" }
     });
     LinkedInToken.findOneAndUpdate.mockRejectedValue(new Error("</script><script>alert(1)</script>"));
 
     const response = await callback(cookie, { code: "test-code", state });
     const html = await response.text();
 
-    expect(html).toContain("Could not save LinkedIn account:");
-    expect(html).toContain("\\u003c/script\\u003e");
+    expect(html).toContain("Could not save LinkedIn account.");
+    expect(html).not.toContain("alert(1)");
     expect(html).not.toContain("</script><script>alert(1)</script>");
     expect(html).not.toContain("window.close()");
   });

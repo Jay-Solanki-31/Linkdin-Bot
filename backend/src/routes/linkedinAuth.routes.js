@@ -33,7 +33,7 @@ router.get("/login", async (req, res) => {
     await LinkedInOAuthTransaction.create({ stateHash, accountId, expiresAt });
   } catch (err) {
     console.error("[LinkedIn OAuth] Could not create OAuth transaction", {
-      message: err.message
+      event: "persistence_failed"
     });
     return sendPopupResponse(res, "failed", "Could not start LinkedIn authorization");
   }
@@ -78,7 +78,7 @@ router.get("/callback", async (req, res) => {
     }
   } catch (err) {
     console.error("[LinkedIn OAuth] Could not consume OAuth transaction", {
-      message: err.message
+      event: "persistence_failed"
     });
     return sendPopupResponse(res, "failed", "Could not validate LinkedIn authorization state");
   }
@@ -125,41 +125,46 @@ router.get("/callback", async (req, res) => {
     }
     const expiresAt = new Date(Date.now() + expiresIn * 1000);
 
-    // Get Member URN
+    // Preserve the established userinfo sub -> memberUrn mapping.
     oauthPhase = "LinkedIn profile lookup";
-    console.info("[LinkedIn OAuth] Looking up LinkedIn profile");
-    const meRes = await axios.get(
-      "https://api.linkedin.com/v2/userinfo",
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "LinkedIn-Version": "20240101"
-        }
-      }
-    );
-
-    if (!meRes.data?.sub) {
-      console.error("[LinkedIn OAuth] Profile response did not include a member ID", {
-        httpStatus: meRes.status,
-        response: sanitizeProviderData(meRes.data)
+    let profile = {};
+    let memberUrn;
+    try {
+      const { data } = await axios.get("https://api.linkedin.com/v2/userinfo", {
+        headers: { Authorization: `Bearer ${accessToken}` }, timeout: 10000
       });
-      return sendPopupResponse(res, "failed", "LinkedIn profile response did not include a member ID");
+      if (typeof data?.sub !== "string" || !data.sub.trim()) throw new Error("Missing subject");
+      memberUrn = `urn:li:person:${data.sub}`;
+      profile = profileFields(data);
+    } catch {
+      console.warn("[LinkedIn OAuth] Profile unavailable", { event: "profile_unavailable" });
+      // Only recover an exactly matching existing identity, never guess from the session.
+      try {
+        const { data } = await axios.get("https://api.linkedin.com/v2/me", {
+          headers: { Authorization: `Bearer ${accessToken}` }, timeout: 10000
+        });
+        const existing = typeof data?.id === "string"
+          ? await LinkedInToken.findOne({ memberUrn: `urn:li:person:${data.id}` }) : null;
+        if (existing) memberUrn = existing.memberUrn;
+      } catch { /* Preserve the previous connection when identity cannot be verified. */ }
+      if (!memberUrn) return sendPopupResponse(res, "failed", "LinkedIn identity could not be verified. Your existing connection is unchanged; please retry.");
     }
-
-    const memberUrn = `urn:li:person:${meRes.data.sub}`;
+    const existingAccount = await LinkedInToken.findOne({ memberUrn });
+    const accountId = existingAccount?.accountId || transaction.accountId;
 
     oauthPhase = "MongoDB token save";
     const tokenDoc = await LinkedInToken.findOneAndUpdate(
-      { accountId: transaction.accountId, memberUrn },
+      { memberUrn },
       {
         $set: {
-          accountId: transaction.accountId,
+          ...(existingAccount && !existingAccount.accountId ? { accountId } : {}),
+          ...profile,
           accessToken,
           expiresAt,
           memberUrn,
           updatedAt: new Date(),
         },
-        $setOnInsert: { createdAt: new Date() },
+        $setOnInsert: { createdAt: new Date(), ...(!existingAccount || existingAccount.accountId ? { accountId } : {}) },
       },
       { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
     );
@@ -171,12 +176,15 @@ router.get("/callback", async (req, res) => {
       return sendPopupResponse(res, "failed", "MongoDB did not return the saved LinkedIn account");
     }
 
-    req.session.linkedinAccountId = transaction.accountId;
+    console.info("[LinkedIn OAuth] Account connected", {
+      event: "account_connected", memberUrn, displayName: tokenDoc.displayName || "LinkedIn account"
+    });
+    req.session.linkedinAccountId = tokenDoc.accountId || accountId;
     req.session.linkedinMemberUrn = memberUrn;
     req.session.save((err) => {
       if (err) {
         console.error("[LinkedIn OAuth] Could not persist connected account session", {
-          message: err.message
+          event: "persistence_failed"
         });
         return sendPopupResponse(res, "failed", "LinkedIn token was saved, but the connected session could not be updated");
       }
@@ -184,14 +192,13 @@ router.get("/callback", async (req, res) => {
     });
   } catch (err) {
     if (oauthPhase === "MongoDB token save") {
-      console.error("[LinkedIn OAuth] MongoDB token save failed", { message: err.message });
-      return sendPopupResponse(res, "failed", `Could not save LinkedIn account: ${err.message}`);
+      console.error("[LinkedIn OAuth] MongoDB token save failed", { event: "persistence_failed" });
+      return sendPopupResponse(res, "failed", "Could not save LinkedIn account. Please retry.");
     }
 
     console.error(`[LinkedIn OAuth] ${oauthPhase} failed`, {
       httpStatus: err?.response?.status,
-      response: sanitizeProviderData(err?.response?.data),
-      message: err?.message
+      event: "oauth_failed"
     });
     const providerMessage = getQueryString(err?.response?.data?.error_description)
       || getQueryString(err?.response?.data?.message)
@@ -226,6 +233,8 @@ router.get("/status", async (req, res) => {
 
   res.json({
     memberUrn,
+    displayName: tokenDoc.displayName || "LinkedIn account",
+    ...(safePicture(tokenDoc.profilePicture) ? { profilePicture: tokenDoc.profilePicture } : {}),
     connected: !expired,
     expired,
     expiresAt: tokenDoc.expiresAt
@@ -274,19 +283,24 @@ function getQueryString(value) {
   return typeof value === "string" ? value : "";
 }
 
-function sanitizeProviderData(value) {
-  if (Array.isArray(value)) return value.map(sanitizeProviderData);
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, nestedValue]) => [
-        key,
-        /token|secret|code|state|authorization/i.test(key)
-          ? "[redacted]"
-          : sanitizeProviderData(nestedValue)
-      ])
-    );
-  }
-  return value;
+function safePicture(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password;
+  } catch { return false; }
+}
+
+function profileFields(data) {
+  const clean = (value) => typeof value === "string"
+    ? value.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 200) : "";
+  const givenName = clean(data.given_name);
+  const familyName = clean(data.family_name);
+  const displayName = clean(data.name) || [givenName, familyName].filter(Boolean).join(" ");
+  if (!displayName) console.warn("[LinkedIn OAuth] Profile name unavailable", {
+    event: "profile_name_unavailable", memberUrn: `urn:li:person:${data.sub}`
+  });
+  return { displayName, givenName, familyName,
+    profilePicture: safePicture(data.picture) ? data.picture : "", profileUpdatedAt: new Date() };
 }
 
 export default router;

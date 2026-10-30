@@ -26,6 +26,11 @@ const LinkedInTokenSchema = new mongoose.Schema({
   timezone: { type: String, default: "Asia/Kolkata" },
   memberId: String,
   profileName: String,
+  displayName: String,
+  givenName: String,
+  familyName: String,
+  profilePicture: String,
+  profileUpdatedAt: Date,
 
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },

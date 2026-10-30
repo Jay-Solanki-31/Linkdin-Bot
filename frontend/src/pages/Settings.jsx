@@ -1,6 +1,7 @@
 ﻿import { useEffect, useState } from "react";
 import api from "@/api";
 import { useAuth } from "@/auth/AuthContext";
+import AccountIdentity from "@/components/AccountIdentity";
 import LinkedInStatus from "@/components/LinkedInStatus";
 import {
   PageHeader,
@@ -87,6 +88,7 @@ export default function Settings() {
         <>
           <section className="surface p-6">
             <h2 className="section-title mb-3">LinkedIn connection</h2>
+            <AccountIdentity />
             <LinkedInStatus />
             <p className="text-sm text-muted-foreground mt-3">
               This workspace uses your authenticated LinkedIn session.

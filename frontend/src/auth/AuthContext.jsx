@@ -27,21 +27,27 @@ async function requestStatus() {
 }
 
 export function AuthProvider({ children }) {
+  const revision = useRef(0);
   const unauthorizedShown = useRef(false);
   const [auth, setAuth] = useState(null);
   const [status, setStatus] = useState("loading");
   const [error, setError] = useState(null);
 
   const refresh = useCallback(async () => {
+    const requestRevision = ++revision.current;
+    setAuth(null);
     setStatus("loading");
     setError(null);
     try {
       const data = await requestStatus();
+      if (requestRevision !== revision.current) return null;
       unauthorizedShown.current = false;
-      setAuth(data);
+      setAuth(isConnected(data) ? data : null);
       setStatus(isConnected(data) ? "authenticated" : "unauthenticated");
       return data;
     } catch (requestError) {
+      if (requestRevision !== revision.current) return null;
+      setAuth(null);
       setError(requestError);
       setStatus("error");
       return null;
@@ -49,6 +55,8 @@ export function AuthProvider({ children }) {
   }, []);
 
   const clearAuth = useCallback((message) => {
+    revision.current++;
+    statusRequest = undefined;
     setAuth(null);
     setStatus("unauthenticated");
     setError(null);
@@ -60,6 +68,8 @@ export function AuthProvider({ children }) {
     const handleUnauthorized = () => {
       if (unauthorizedShown.current) return;
       unauthorizedShown.current = true;
+      revision.current++;
+      statusRequest = undefined;
       setAuth(null);
       setStatus("unauthenticated");
       setError(null);
@@ -121,6 +131,7 @@ export function AuthProvider({ children }) {
         );
       }, 300000);
     });
+    statusRequest = undefined;
     const data = await refresh();
     if (!isConnected(data))
       throw new Error(
