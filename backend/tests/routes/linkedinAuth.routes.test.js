@@ -126,6 +126,42 @@ describe("LinkedIn OAuth routes", () => {
     });
   }
 
+  it("requires a session for profile image delivery", async () => {
+    const response = await fetch(`${baseUrl}/api/auth/linkedin/picture?memberUrn=someone`);
+    expect(response.status).toBe(401);
+    expect(axios.get).not.toHaveBeenCalled();
+  });
+
+  it.each(["success", "switched", "untrusted", "expired", "missing", "html", "failure"])("isolates profile image delivery: %s", async outcome => {
+    const login = await beginOAuth();
+    const accountId = LinkedInOAuthTransaction.create.mock.calls[0][0].accountId;
+    const memberUrn = "urn:li:person:known";
+    const doc = { accountId, memberUrn, accessToken: "private-token",
+      expiresAt: new Date(Date.now() + 60000), profilePicture: "https://media.licdn.com/avatar.jpg?e=123&v=beta&t=signed" };
+    axios.post.mockResolvedValue({ data: { access_token: "private-token", expires_in: 3600 } });
+    axios.get.mockResolvedValueOnce({ data: { sub: "known" } });
+    LinkedInToken.findOneAndUpdate.mockResolvedValueOnce(doc);
+    const response = await callback(login.cookie, { code: "code", state: login.state });
+    const cookie = response.headers.get("set-cookie")?.split(";")[0] || login.cookie;
+    axios.get.mockReset();
+    if (outcome === "untrusted") doc.profilePicture = "https://evil.test/image";
+    if (outcome === "expired") doc.expiresAt = new Date(0);
+    LinkedInToken.findOne.mockResolvedValue(outcome === "missing" ? null : doc);
+    if (outcome === "failure") axios.get.mockRejectedValue(new Error("download failed"));
+    else axios.get.mockResolvedValue({ headers: { "content-type": outcome === "html" ? "text/html" : "image/jpeg" }, data: Buffer.from([255, 216, 255, 217]) });
+    const requested = outcome === "switched" ? "urn:li:person:other" : memberUrn;
+    const image = await fetch(`${baseUrl}/api/auth/linkedin/picture?memberUrn=${encodeURIComponent(requested)}`, { headers: { cookie } });
+    expect(image.status).toBe({ success: 200, switched: 409, untrusted: 404, expired: 401, missing: 401, html: 502, failure: 502 }[outcome]);
+    expect(image.headers.get("cache-control")).toBe("private, no-store");
+    if (outcome !== "switched") expect(LinkedInToken.findOne).toHaveBeenCalledWith({ accountId, memberUrn });
+    if (["switched", "untrusted", "expired", "missing"].includes(outcome)) expect(axios.get).not.toHaveBeenCalled();
+    else expect(axios.get).toHaveBeenCalledWith(doc.profilePicture, expect.objectContaining({ maxRedirects: 0, maxContentLength: 2097152, timeout: 10000, responseType: "arraybuffer" }));
+    if (outcome === "success") {
+      expect(image.headers.get("content-type")).toContain("image/jpeg");
+      expect(Buffer.from(await image.arrayBuffer())).toEqual(Buffer.from([255, 216, 255, 217]));
+    }
+  });
+
   it("recovers the initiating account from the server-side transaction if callback has no login cookie", async () => {
     const { state, cookieHeader } = await beginOAuth();
     expect(cookieHeader).toContain("SameSite=Lax");
@@ -135,7 +171,7 @@ describe("LinkedIn OAuth routes", () => {
       accountId,
       memberUrn: "urn:li:person:test-member",
       displayName: "Test Member",
-      profilePicture: "https://example.com/avatar.png",
+      profilePicture: "https://media.licdn.com/avatar.png",
       accessToken: "private-token",
       expiresAt: new Date(Date.now() + 60_000)
     };
@@ -145,7 +181,7 @@ describe("LinkedIn OAuth routes", () => {
     });
     axios.get.mockResolvedValue({
       status: 200,
-      data: { sub: "test-member", name: "Test Member", given_name: "Test", family_name: "Member", picture: "https://example.com/avatar.png" }
+      data: { sub: "test-member", name: "Test Member", given_name: "Test", family_name: "Member", picture: "https://media.licdn.com/avatar.png" }
     });
     LinkedInToken.findOneAndUpdate.mockResolvedValue(savedAccount);
 
@@ -168,10 +204,11 @@ describe("LinkedIn OAuth routes", () => {
       headers: { cookie: callbackCookie }
     });
     const status = await statusResponse.json();
-    expect(status).toMatchObject({ connected: true, displayName: "Test Member", profilePicture: "https://example.com/avatar.png" });
+    expect(status).toMatchObject({ connected: true, displayName: "Test Member", profilePicture: "https://media.licdn.com/avatar.png" });
     expect(JSON.stringify(status)).not.toContain("private-token");
     expect(status).not.toHaveProperty("accessToken");
-    expect(LinkedInToken.findOneAndUpdate.mock.calls[0][1].$set).toMatchObject({ displayName: "Test Member", givenName: "Test", familyName: "Member" });
+    expect(LinkedInToken.findOneAndUpdate.mock.calls[0][1].$set).toMatchObject({ displayName: "Test Member", givenName: "Test", familyName: "Member", profilePicture: "https://media.licdn.com/avatar.png" });
+    expect(axios.get).toHaveBeenCalledTimes(1);
   });
 
   it("stores independent account IDs for separate login sessions", async () => {
@@ -219,11 +256,12 @@ describe("LinkedIn OAuth routes", () => {
     axios.post.mockResolvedValue({ data: { access_token: "secret", expires_in: 3600 } });
     for (const name of ["Alice", "Alice Updated", "Bob"]) {
       const login = await beginOAuth();
-      axios.get.mockResolvedValueOnce({ data: { sub: name === "Bob" ? "bob" : "alice", name } });
+      axios.get.mockResolvedValueOnce({ data: { sub: name === "Bob" ? "bob" : "alice", name, ...(name === "Alice" ? { picture: "https://media.licdn.com/alice.png" } : {}) } });
       expect(await (await callback(login.cookie, { code: "code", state: login.state })).text()).toContain('"status":"success"');
     }
     expect(records.size).toBe(2);
     expect(records.get("urn:li:person:alice").displayName).toBe("Alice Updated");
+    expect(records.get("urn:li:person:alice").profilePicture).toBe("https://media.licdn.com/alice.png");
     expect(records.get("urn:li:person:bob").displayName).toBe("Bob");
   });
 
@@ -234,6 +272,7 @@ describe("LinkedIn OAuth routes", () => {
     LinkedInToken.findOneAndUpdate.mockImplementation(async (_, update) => update.$set);
     expect(await (await callback(login.cookie, { code: "code", state: login.state })).text()).toContain('"status":"success"');
     expect(LinkedInToken.findOneAndUpdate.mock.calls[0][1].$set.displayName).toBe("");
+    expect(LinkedInToken.findOneAndUpdate.mock.calls[0][1].$set).not.toHaveProperty("profilePicture");
   });
 
   it("recovers a failed profile lookup only with a verified existing identity", async () => {
@@ -241,11 +280,12 @@ describe("LinkedIn OAuth routes", () => {
     axios.post.mockResolvedValue({ data: { access_token: "secret", expires_in: 3600 } });
     axios.get.mockRejectedValueOnce(new Error("secret must never be logged"))
       .mockResolvedValueOnce({ data: { id: "known" } });
-    const existing = { memberUrn: "urn:li:person:known", accountId: "original", displayName: "Known" };
+    const existing = { memberUrn: "urn:li:person:known", accountId: "original", displayName: "Known", profilePicture: "https://media.licdn.com/known.png" };
     LinkedInToken.findOne.mockResolvedValue(existing);
     LinkedInToken.findOneAndUpdate.mockResolvedValue(existing);
     expect(await (await callback(login.cookie, { code: "code", state: login.state })).text()).toContain('"status":"success"');
     expect(LinkedInToken.findOneAndUpdate.mock.calls[0][1].$set).not.toHaveProperty("displayName");
+    expect(LinkedInToken.findOneAndUpdate.mock.calls[0][1].$set).not.toHaveProperty("profilePicture");
   });
 
   it("keeps OAuth state validation and returns a visible failure for a mismatched state", async () => {
@@ -324,7 +364,7 @@ describe("LinkedIn OAuth routes", () => {
     });
     axios.get.mockResolvedValue({
       status: 200,
-      data: { sub: "test-member", name: "Test Member", given_name: "Test", family_name: "Member", picture: "https://example.com/avatar.png" }
+      data: { sub: "test-member", name: "Test Member", given_name: "Test", family_name: "Member", picture: "https://media.licdn.com/avatar.png" }
     });
     LinkedInToken.findOneAndUpdate.mockRejectedValue(new Error("</script><script>alert(1)</script>"));
 
@@ -336,4 +376,37 @@ describe("LinkedIn OAuth routes", () => {
     expect(html).not.toContain("</script><script>alert(1)</script>");
     expect(html).not.toContain("window.close()");
   });
+  it.each(["success", "missing", "failure", "mismatched", "untrusted"])("safely backfills a legacy account: %s", async outcome => {
+    const login = await beginOAuth();
+    const accountId = LinkedInOAuthTransaction.create.mock.calls[0][0].accountId;
+    const doc = { accountId, memberUrn: "urn:li:person:known", accessToken: "private-access", refreshToken: "private-refresh", expiresAt: new Date(Date.now() + 60000) };
+    axios.post.mockResolvedValue({ data: { access_token: "private-access", expires_in: 3600 } });
+    axios.get.mockResolvedValueOnce({ data: { sub: "known" } });
+    LinkedInToken.findOneAndUpdate.mockResolvedValueOnce(doc);
+    const response = await callback(login.cookie, { code: "code", state: login.state });
+    const cookie = response.headers.get("set-cookie")?.split(";")[0] || login.cookie;
+    LinkedInToken.findOne.mockImplementation(async filter => {
+      expect(filter).toEqual({ accountId, memberUrn: doc.memberUrn });
+      return doc;
+    });
+    LinkedInToken.findOneAndUpdate.mockImplementation(async (filter, update) => {
+      expect(filter).toMatchObject({ accountId, memberUrn: doc.memberUrn });
+      Object.assign(doc, update.$set);
+      return doc;
+    });
+    const picture = "https://media.licdn.com/known.png";
+    if (outcome === "failure") axios.get.mockRejectedValueOnce(new Error("private-access"));
+    else axios.get.mockResolvedValueOnce({ data: {
+      sub: outcome === "mismatched" ? "another-person" : "known",
+      ...(outcome === "missing" ? {} : { picture: outcome === "untrusted" ? "https://evil.test/a" : picture })
+    } });
+    const status = await (await fetch(baseUrl + "/api/auth/linkedin/status", { headers: { cookie } })).json();
+    expect(status).toMatchObject({ connected: true, profilePicture: outcome === "success" ? picture : null });
+    expect(JSON.stringify(status)).not.toContain("private-");
+    expect(status).not.toHaveProperty("accessToken");
+    expect(status).not.toHaveProperty("refreshToken");
+    await fetch(baseUrl + "/api/auth/linkedin/status", { headers: { cookie } });
+    expect(axios.get).toHaveBeenCalledTimes(2); // OAuth plus exactly one backfill.
+  });
+
 });

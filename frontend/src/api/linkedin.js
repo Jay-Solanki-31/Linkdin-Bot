@@ -8,3 +8,7 @@ export async function getLinkedInStatus() {
   const { data } = await api.get("/api/auth/linkedin/status");
   return data;
 }
+
+export function getLinkedInPictureUrl(memberUrn) {
+  return api.getUri({ url: "/api/auth/linkedin/picture", params: { memberUrn } });
+}

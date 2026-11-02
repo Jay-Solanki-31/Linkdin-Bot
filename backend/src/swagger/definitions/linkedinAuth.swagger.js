@@ -72,7 +72,8 @@
  *                 profilePicture:
  *                   type: string
  *                   format: uri
- *                   description: Optional HTTPS avatar URL
+ *                   nullable: true
+ *                   description: Trusted LinkedIn HTTPS avatar URL, or null when unavailable
  *                 connected:
  *                   type: boolean
  *                   description: Whether LinkedIn is currently connected

@@ -125,7 +125,6 @@ router.get("/callback", async (req, res) => {
     }
     const expiresAt = new Date(Date.now() + expiresIn * 1000);
 
-    // Preserve the established userinfo sub -> memberUrn mapping.
     oauthPhase = "LinkedIn profile lookup";
     let profile = {};
     let memberUrn;
@@ -138,7 +137,6 @@ router.get("/callback", async (req, res) => {
       profile = profileFields(data);
     } catch {
       console.warn("[LinkedIn OAuth] Profile unavailable", { event: "profile_unavailable" });
-      // Only recover an exactly matching existing identity, never guess from the session.
       try {
         const { data } = await axios.get("https://api.linkedin.com/v2/me", {
           headers: { Authorization: `Bearer ${accessToken}` }, timeout: 10000
@@ -146,7 +144,7 @@ router.get("/callback", async (req, res) => {
         const existing = typeof data?.id === "string"
           ? await LinkedInToken.findOne({ memberUrn: `urn:li:person:${data.id}` }) : null;
         if (existing) memberUrn = existing.memberUrn;
-      } catch { /* Preserve the previous connection when identity cannot be verified. */ }
+      } catch { }
       if (!memberUrn) return sendPopupResponse(res, "failed", "LinkedIn identity could not be verified. Your existing connection is unchanged; please retry.");
     }
     const existingAccount = await LinkedInToken.findOne({ memberUrn });
@@ -230,15 +228,64 @@ router.get("/status", async (req, res) => {
   if (!tokenDoc) return res.json({ connected: false, expired: false });
 
   const expired = new Date() > tokenDoc.expiresAt;
+  if (!expired && !safePicture(tokenDoc.profilePicture) && !tokenDoc.profilePictureCheckedAt) {
+    const claimed = await LinkedInToken.findOneAndUpdate(
+      { accountId, memberUrn, profilePictureCheckedAt: { $exists: false } },
+      { $set: { profilePictureCheckedAt: new Date() } },
+      { returnDocument: "after" }
+    );
+    if (claimed) {
+      try {
+        const { data } = await axios.get("https://api.linkedin.com/v2/userinfo", {
+          headers: { Authorization: `Bearer ${claimed.accessToken}` }, timeout: 10000
+        });
+        if (`urn:li:person:${data?.sub}` === memberUrn && safePicture(data.picture)) {
+          const saved = await LinkedInToken.findOneAndUpdate(
+            { accountId, memberUrn, accessToken: claimed.accessToken },
+            { $set: { profilePicture: data.picture } }, { returnDocument: "after" }
+          );
+          if (saved) tokenDoc = saved;
+        }
+      } catch {
+        console.warn("[LinkedIn OAuth] Picture backfill unavailable", { event: "profile_unavailable" });
+      }
+    }
+  }
 
   res.json({
     memberUrn,
     displayName: tokenDoc.displayName || "LinkedIn account",
-    ...(safePicture(tokenDoc.profilePicture) ? { profilePicture: tokenDoc.profilePicture } : {}),
+    profilePicture: safePicture(tokenDoc.profilePicture) ? tokenDoc.profilePicture : null,
     connected: !expired,
     expired,
     expiresAt: tokenDoc.expiresAt
   });
+});
+
+router.get("/picture", async (req, res) => {
+  res.set({ "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" });
+  res.vary("Cookie");
+  const memberUrn = req.session?.linkedinMemberUrn;
+  const accountId = req.session?.linkedinAccountId || req.session?.accountId || req.sessionID;
+  if (!memberUrn || !accountId) return res.sendStatus(401);
+  // An image queued before an account switch must not return the new profile.
+  if (req.query.memberUrn !== memberUrn) return res.sendStatus(409);
+  try {
+    const account = await LinkedInToken.findOne({ accountId, memberUrn });
+    if (!account || new Date(account.expiresAt) <= new Date()) return res.sendStatus(401);
+    if (!safePicture(account.profilePicture)) return res.sendStatus(404);
+    const image = await axios.get(account.profilePicture, {
+      responseType: "arraybuffer", timeout: 10000, maxRedirects: 0,
+      maxContentLength: 2 * 1024 * 1024,
+    });
+    const type = image.headers["content-type"]?.split(";")[0].trim().toLowerCase();
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"].includes(type)) {
+      return res.sendStatus(502);
+    }
+    return res.type(type).send(Buffer.from(image.data));
+  } catch {
+    return res.sendStatus(502);
+  }
 });
 
 // ------------------- Helper Popup Sender -------------------
@@ -286,7 +333,8 @@ function getQueryString(value) {
 function safePicture(value) {
   try {
     const url = new URL(value);
-    return url.protocol === "https:" && !url.username && !url.password;
+    return url.protocol === "https:" && !url.username && !url.password && !url.port
+      && ["media.licdn.com", "media.licdn-ei.com"].includes(url.hostname);
   } catch { return false; }
 }
 
@@ -300,7 +348,8 @@ function profileFields(data) {
     event: "profile_name_unavailable", memberUrn: `urn:li:person:${data.sub}`
   });
   return { displayName, givenName, familyName,
-    profilePicture: safePicture(data.picture) ? data.picture : "", profileUpdatedAt: new Date() };
+    ...(safePicture(data.picture) ? { profilePicture: data.picture } : {}),
+    profilePictureCheckedAt: new Date(), profileUpdatedAt: new Date() };
 }
 
 export default router;

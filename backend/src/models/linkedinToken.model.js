@@ -30,6 +30,7 @@ const LinkedInTokenSchema = new mongoose.Schema({
   givenName: String,
   familyName: String,
   profilePicture: String,
+  profilePictureCheckedAt: Date,
   profileUpdatedAt: Date,
 
   createdAt: { type: Date, default: Date.now },

@@ -11,19 +11,9 @@ import { toast } from "sonner";
 import { getLinkedInLoginUrl, getLinkedInStatus } from "@/api/linkedin";
 
 const AuthContext = createContext(null);
-let statusRequest;
 
 function isConnected(data) {
   return Boolean(data?.connected && !data?.expired);
-}
-
-async function requestStatus() {
-  if (!statusRequest) {
-    statusRequest = getLinkedInStatus().finally(() => {
-      statusRequest = undefined;
-    });
-  }
-  return statusRequest;
 }
 
 export function AuthProvider({ children }) {
@@ -39,7 +29,7 @@ export function AuthProvider({ children }) {
     setStatus("loading");
     setError(null);
     try {
-      const data = await requestStatus();
+      const data = await getLinkedInStatus();
       if (requestRevision !== revision.current) return null;
       unauthorizedShown.current = false;
       setAuth(isConnected(data) ? data : null);
@@ -56,7 +46,6 @@ export function AuthProvider({ children }) {
 
   const clearAuth = useCallback((message) => {
     revision.current++;
-    statusRequest = undefined;
     setAuth(null);
     setStatus("unauthenticated");
     setError(null);
@@ -69,7 +58,6 @@ export function AuthProvider({ children }) {
       if (unauthorizedShown.current) return;
       unauthorizedShown.current = true;
       revision.current++;
-      statusRequest = undefined;
       setAuth(null);
       setStatus("unauthenticated");
       setError(null);
@@ -78,11 +66,12 @@ export function AuthProvider({ children }) {
       );
     };
     window.addEventListener("linkedin-auth:unauthorized", handleUnauthorized);
-    return () =>
+    return () => {
       window.removeEventListener(
         "linkedin-auth:unauthorized",
         handleUnauthorized,
       );
+    };
   }, [refresh]);
 
   const connect = useCallback(async () => {
@@ -131,7 +120,6 @@ export function AuthProvider({ children }) {
         );
       }, 300000);
     });
-    statusRequest = undefined;
     const data = await refresh();
     if (!isConnected(data))
       throw new Error(
@@ -156,8 +144,6 @@ export function AuthProvider({ children }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-// The provider and its consumer hook intentionally share a module.
-// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) throw new Error("useAuth must be used inside AuthProvider");

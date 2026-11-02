@@ -143,12 +143,14 @@ export function ConfirmationDialog({
   title,
   description,
   confirmLabel = "Confirm",
+  children,
   onConfirm,
   onClose,
   busy,
 }) {
   return (
     <Dialog title={title} onClose={onClose} busy={busy}>
+      {children}
       <p className="text-sm text-muted-foreground leading-relaxed">
         {description}
       </p>

@@ -1,6 +1,7 @@
 ﻿import { useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import api from "@/api";
+import AccountIdentity from "@/components/AccountIdentity";
 import { useAuth } from "@/auth/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -399,7 +400,9 @@ export default function Studio() {
             );
             if (success && action === "publish") setPublishRequested(true);
           }}
-        />
+        >
+          {confirmation === "publish" && <div className="mb-4"><AccountIdentity /></div>}
+        </ConfirmationDialog>
       )}
       {scheduling && (
         <Dialog

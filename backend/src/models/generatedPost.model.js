@@ -10,7 +10,6 @@ const GeneratedPostSchema = new mongoose.Schema({
     type: String,
     index: true,
   },
-  // Manual Thunder Client runs set this to prevent real LinkedIn publishing.
   testMode: { type: Boolean, default: false, index: true },
 
   creationMode: { type: String, enum: ["automatic", "manual"], default: "automatic" },
