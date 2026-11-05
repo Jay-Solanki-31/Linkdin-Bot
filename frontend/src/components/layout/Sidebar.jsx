@@ -20,6 +20,7 @@ const items = [
   ["AI Posts", "/posts", FileText],
   ["Calendar", "/calendar", CalendarDays],
   ["Analytics", "/analytics", BarChart3],
+  ["Publishing Health", "/publishing-health", BarChart3],
   ["Content Sources", "/fetcher", Download],
   ["Settings", "/settings", Settings],
 ];

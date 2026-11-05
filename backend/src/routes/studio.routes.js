@@ -1,9 +1,12 @@
+import { randomUUID } from "node:crypto";
+import { dispatchRecovery } from "../services/publishingHealth.service.js";
+import { activityEntry, activityPush } from "../utils/publishingDiagnostics.js";
 import express from "express";
 import mongoose from "mongoose";
 import GeneratedPost from "../models/generatedPost.model.js";
 import FetchedContent from "../models/fetchedContent.model.js";
 import LinkedInToken from "../models/linkedinToken.model.js";
-import { aiQueue } from "../queue/ai.queue.js";
+
 import { scheduleTime, validateTimezone } from "../utils/scheduleTime.js";
 import { enqueueCurrentPost, removeOldPublishJobs } from "../services/postScheduling.service.js";
 
@@ -31,7 +34,7 @@ const safe = fn => async (req, res) => {
   }
 };
 const owner = req => ({ linkedinMemberUrn: req.session.linkedinMemberUrn });
-const editable = { status: { $in: ["draft", "queued"] }, linkedinPostUrn: null };
+const editable = { status: { $in: ["draft", "queued"] }, linkedinPostUrn: null, publishAttemptedAt: null, "recoveryIntent.state": { $nin: ["pending", "running"] } };
 
 
 router.get("/automation/settings", safe(async (req, res) => {
@@ -55,8 +58,8 @@ router.post("/ai-posts/generate", safe(async (req, res) => {
   if (articleId && !await FetchedContent.exists({ _id: articleId, ...owner(req) })) return res.status(404).json({ message: "Article not found" });
   // Retain the existing one-post-per-article constraint, including manual drafts.
   if (articleId && await GeneratedPost.exists({ articleId, ...owner(req) })) return res.status(409).json({ message: "This article already has a post" });
-  const post = await GeneratedPost.create({ ...owner(req), ...(articleId ? { articleId } : { topic: topic.trim() }), customPrompt, creationMode: "manual", status: "draft" });
-  await aiQueue.add("GENERATE_POST", { postId: String(post._id), ...owner(req) }, { jobId: `ai-${post._id}` });
+  const post = await GeneratedPost.create({ ...owner(req), ...(articleId ? { articleId } : { topic: topic.trim() }), customPrompt, creationMode: "manual", status: "draft", recoveryIntent: { id: `generate-${randomUUID()}`, state: "pending", requestedAt: new Date() } });
+  try { await dispatchRecovery(post); } catch { /* Pending intent is reconciled after Redis recovers. */ }
   res.status(202).json({ data: post, message: "Generation queued; the result will remain a draft" });
 }));
 
@@ -67,7 +70,7 @@ router.get("/ai-posts/:id", safe(async (req, res) => {
 }));
 
 
-router.route("/ai-posts/:id").patch( safe(async (req, res) => {
+router.route("/ai-posts/:id").patch(safe(async (req, res) => {
   const { text, title } = req.body;
   if (typeof text !== "string" || !text.trim() || text.length > 3000 || (title !== undefined && (typeof title !== "string" || title.length > 300))) return res.status(400).json({ message: "Text must contain 1–3000 characters" });
   const post = await GeneratedPost.findOneAndUpdate({ _id: req.params.id, ...owner(req), ...editable }, { $set: { text: text.trim(), ...(title !== undefined ? { title } : {}) } }, { returnDocument: "after" });
@@ -79,10 +82,9 @@ router.route("/ai-posts/:id").patch( safe(async (req, res) => {
 router.post("/ai-posts/:id/regenerate", safe(async (req, res) => {
   const customPrompt = req.body.customPrompt || "";
   if (typeof customPrompt !== "string" || customPrompt.length > 4000) return res.status(400).json({ message: "Invalid prompt" });
-  const post = await GeneratedPost.findOneAndUpdate({ _id: req.params.id, ...owner(req), creationMode: "manual", status: "draft" }, { $set: { status: "generating", text: "", customPrompt } }, { returnDocument: "after" });
-  if (!post) return res.status(409).json({ message: "Only manual drafts can be regenerated" });
-  await GeneratedPost.updateOne({ _id: post._id, ...owner(req), status: "generating" }, { $set: { status: "draft" } });
-  await aiQueue.add("GENERATE_POST", { postId: String(post._id), ...owner(req) }, { jobId: `regenerate-${post._id}-${post.updatedAt.getTime()}` });
+  const post = await GeneratedPost.findOneAndUpdate({ _id: req.params.id, ...owner(req), creationMode: "manual", status: "draft", linkedinPostUrn: null, publishAttemptedAt: null, "recoveryIntent.state": { $nin: ["pending", "running"] } }, { $set: { text: "", customPrompt, recoveryIntent: { id: `regenerate-${randomUUID()}`, state: "pending", requestedAt: new Date() } } }, { returnDocument: "after" });
+  if (!post) return res.status(409).json({ message: "Only idle manual drafts can be regenerated" });
+  try { await dispatchRecovery(post); } catch { /* Durable intent remains pending. */ }
   res.status(202).json({ message: "Regeneration queued" });
 }));
 
@@ -100,7 +102,7 @@ export async function changeSchedule(req, res) {
   if (!old) return res.status(404).json({ message: "Post not found" });
   if (old.testMode) return res.status(409).json({ message: "Test posts cannot be published or scheduled. Create a new manual draft." });
   if (!cancel && !old.text?.trim()) return res.status(409).json({ message: "Generate and review text first" });
-  const post = await GeneratedPost.findOneAndUpdate({ _id: old._id, ...owner(req), ...editable, scheduleVersion: old.scheduleVersion || { $in: [0, null] } }, { $set: { status: cancel ? "draft" : "queued", ...(cancel ? {} : { publishAt, timezone }) }, ...(cancel ? { $unset: { publishAt: "" } } : {}), $inc: { scheduleVersion: 1 } }, { returnDocument: "after" });
+  const post = await GeneratedPost.findOneAndUpdate({ _id: old._id, ...owner(req), ...editable, scheduleVersion: old.scheduleVersion || { $in: [0, null] } }, { $set: { status: cancel ? "draft" : "queued", ...(cancel ? {} : { publishAt, timezone }) }, ...(cancel ? { $unset: { publishAt: "" } } : {}), $inc: { scheduleVersion: 1 }, $push: activityPush(activityEntry(cancel ? "schedule_cancelled" : "schedule_requested", "scheduling", "user")) }, { returnDocument: "after" });
   if (!post) return res.status(409).json({ message: "Post changed or publishing has started; refresh before trying again" });
   await removeOldPublishJobs(old);
   if (!cancel) await enqueueCurrentPost(post);

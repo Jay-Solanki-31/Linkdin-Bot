@@ -72,7 +72,7 @@ describe('generateAIResponse (Groq Service)', () => {
         systemPrompt: 'Test',
         promptType: 'insight',
       })
-    ).rejects.toThrow('API Error');
+    ).rejects.toThrow('AI_GENERATION_FAILED');
   });
 
   it('should return empty string when content is null', async () => {
@@ -96,7 +96,7 @@ describe('generateAIResponse (Groq Service)', () => {
         systemPrompt: 'Test',
         promptType: 'insight',
       })
-    ).rejects.toThrow('Groq request failed');
+    ).rejects.toThrow('AI_EMPTY_RESPONSE');
   });
 
   it('should extract content from nested response structure', async () => {
@@ -125,7 +125,7 @@ describe('generateAIResponse (Groq Service)', () => {
   });
 
   it('should handle timeout errors', async () => {
-    axios.post.mockRejectedValue(new Error('Request timeout'));
+    axios.post.mockRejectedValue(Object.assign(new Error('Request timeout'), { code: 'ECONNABORTED' }));
 
     await expect(
       generateAIResponse({
@@ -133,6 +133,6 @@ describe('generateAIResponse (Groq Service)', () => {
         systemPrompt: 'Test',
         promptType: 'insight',
       })
-    ).rejects.toThrow('Request timeout');
+    ).rejects.toThrow('AI_TIMEOUT');
   });
 });

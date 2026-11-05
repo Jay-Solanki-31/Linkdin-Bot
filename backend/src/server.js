@@ -21,6 +21,8 @@ import slotAllocatorRoutes from "./routes/slotAllocator.routes.js";
 import testRoutes from "./routes/test.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
 import studioRoutes from "./routes/studio.routes.js";
+import publishingHealthRoutes from "./routes/publishingHealth.routes.js";
+
 
 
 import bullBoard from "./dashboard/bullboard.js";
@@ -31,7 +33,7 @@ import { recoverPublishSchedules } from "./services/postScheduling.service.js";
 // Scheduler
 import { startFetchScheduler } from "./modules/scheduler/fetchScheduler.js";
 import { startSlotAllocatorScheduler } from "./modules/scheduler/slotAllocator.scheduler.js";
-import { recoverStuckJobs } from "./queue/recovery.js";
+import { reconcileRecoveryIntents } from "./services/publishingHealth.service.js";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -86,6 +88,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/ai", aiRoute);
 app.use("/api", fetcherRoute);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/publishing-health", publishingHealthRoutes);
 app.use("/api/auth/linkedin", linkedinAuthRoutes);
 app.use("/api", studioRoutes);
 app.use("/api/ai-posts", aiPostsRoutes);
@@ -108,7 +111,7 @@ async function start() {
   try {
     await connectDB();
     logger.info("DB connected");
-    cron.schedule("0 2 * * *", async () => { await recoverStuckJobs(); }, { timezone: "Asia/Kolkata" });
+    cron.schedule("0 2 * * *", async () => { await reconcileRecoveryIntents(); }, { timezone: "Asia/Kolkata" });
 
     // 🔥 START WORKERS
     await import("./queue/workers/fetcher.worker.js");
@@ -117,8 +120,9 @@ async function start() {
     await import("./queue/workers/slotAllocator.worker.js");
 
     logger.info("Workers started");
+    await reconcileRecoveryIntents();
     await recoverPublishSchedules();
-    cron.schedule("*/5 * * * *", () => recoverPublishSchedules().catch(error => logger.error(error.message)));
+    cron.schedule("*/5 * * * *", () => Promise.all([recoverPublishSchedules(), reconcileRecoveryIntents()]).catch(() => logger.error("Reconciliation unavailable")));
 
     // 🔥 START SCHEDULERS
     startFetchScheduler();

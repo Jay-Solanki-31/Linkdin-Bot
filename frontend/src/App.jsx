@@ -11,6 +11,7 @@ import Connect from "./pages/Connect";
 import Calendar from "./pages/Calendar";
 import Settings from "./pages/Settings";
 import { LoadingSkeleton } from "./components/WorkspaceUI";
+const PublishingHealth = lazy(() => import("./pages/PublishingHealth.jsx"));
 const Studio = lazy(() => import("./pages/Studio.jsx"));
 const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));
 const Analytics = lazy(() => import("./pages/Analytics.jsx"));
@@ -36,6 +37,7 @@ function App() {
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/fetcher" element={<Fetcher />} />
                   <Route path="/records" element={<FetcherList />} />
+                  <Route path="/publishing-health" element={<PublishingHealth />} />
                   <Route path="/studio" element={<Studio />} />
                   <Route path="/posts" element={<AIPosts />} />
                   <Route path="/analytics" element={<Analytics />} />

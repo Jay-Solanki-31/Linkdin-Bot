@@ -8,6 +8,7 @@ const GeneratedPostSchema = new mongoose.Schema({
   },
   linkedinMemberUrn: {
     type: String,
+    immutable: true,
     index: true,
   },
   testMode: { type: Boolean, default: false, index: true },
@@ -17,6 +18,12 @@ const GeneratedPostSchema = new mongoose.Schema({
   customPrompt: String,
   timezone: { type: String, default: "Asia/Kolkata" },
   scheduleVersion: { type: Number, default: 0 },
+  generationJobId: String,
+  generationRunId: String,
+  errorCode: String,
+  lastRecoveryAt: Date,
+  recoveryIntent: { id: String, state: { type: String, enum: ["pending", "running", "completed", "failed"] }, requestedAt: Date },
+  activity: { type: [{ eventType: String, stage: String, actorType: String, createdAt: Date }], default: undefined },
   publishAttemptedAt: Date,
   attempts: { type: Number, default: 0 },
   title: { type: String, default: "" },
@@ -116,6 +123,8 @@ GeneratedPostSchema.index(
 
 GeneratedPostSchema.index({ slot: 1, status: 1 });
 GeneratedPostSchema.index({ publishAt: 1 });
+GeneratedPostSchema.index({ linkedinMemberUrn: 1, status: 1, lastFailedAt: -1 });
+GeneratedPostSchema.index({ "recoveryIntent.state": 1 });
 GeneratedPostSchema.index({ status: 1, linkedinPostUrn: 1});
 
 

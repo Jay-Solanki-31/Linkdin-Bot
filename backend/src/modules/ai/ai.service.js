@@ -133,7 +133,7 @@ Requirements:
         throw err;
       }
 
-      throw new Error(`Groq request failed: ${message}`);
+      throw Object.assign(new Error(`Groq request failed: ${message}`), { code: err.code });
     }
   }
 }
