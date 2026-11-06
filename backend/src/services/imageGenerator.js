@@ -63,7 +63,7 @@ class ImageGenerator {
 
       return { imagePath };
     } catch (err) {
-      logger.error(`Image generation failed: ${err.message}`);
+      logger.error("Image generation failed", { postId, code: "IMAGE_UNAVAILABLE" });
       throw err;
     }
   }

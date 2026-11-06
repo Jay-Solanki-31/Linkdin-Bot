@@ -3,6 +3,7 @@ import api from "@/api";
 import { useAuth } from "@/auth/AuthContext";
 import AccountIdentity from "@/components/AccountIdentity";
 import LinkedInStatus from "@/components/LinkedInStatus";
+import AIWritingPreferences from "@/components/AIWritingPreferences";
 import {
   PageHeader,
   LoadingSkeleton,
@@ -174,6 +175,7 @@ export default function Settings() {
           busy={busy}
         />
       )}
+      <AIWritingPreferences />
     </div>
   );
 }

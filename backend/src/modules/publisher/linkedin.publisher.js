@@ -87,6 +87,7 @@ async function createPost(
     "https://api.linkedin.com/rest/posts",
     payload,
     {
+      timeout: 30000,
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "LinkedIn-Version": "202511",

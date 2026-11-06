@@ -6,6 +6,7 @@ import { useLocation, Link } from "react-router-dom";
 const names = {
   "/": "Overview", "/studio": "AI Post Studio", "/records": "Content Library",
   "/posts": "AI Posts", "/calendar": "Calendar", "/analytics": "Analytics",
+  "/publishing-health": "Publishing Health",
   "/fetcher": "Content Sources", "/settings": "Settings",
 };
 export default function Header({ open, onMenu }) {
