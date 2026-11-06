@@ -14,6 +14,8 @@ import {
 } from "../../utils/publishingDiagnostics.js";
 import logger from "../../utils/logger.js";
 import { aiDLQ } from "../ai.dlq.queue.js";
+import { loadWritingPreferences } from "../../services/writingPreferences.service.js";
+import { validatePreferences } from "../../utils/writingPreferences.js";
 
 const worker = new Worker(
   "ai-processing-queue",
@@ -76,6 +78,20 @@ const worker = new Worker(
               linkedinMemberUrn,
             });
       if (!content) throw new Error("Content not found");
+      const attemptId = recoveryId || String(job.id);
+      let preferences = null;
+      if (!post.text?.trim()) {
+        if (post.writingPreferencesAttempt === attemptId) {
+          preferences = post.writingPreferencesSnapshot
+            ? validatePreferences(post.writingPreferencesSnapshot.toObject ? post.writingPreferencesSnapshot.toObject() : post.writingPreferencesSnapshot) : null;
+        } else {
+          preferences = await loadWritingPreferences(linkedinMemberUrn);
+          const snapshot = await GeneratedPost.updateOne(scope, {
+            $set: { writingPreferencesAttempt: attemptId, writingPreferencesSnapshot: preferences },
+          });
+          if (!snapshot.matchedCount) return;
+        }
+      }
       const result = post.text?.trim()
         ? {
             text: post.text,
@@ -86,6 +102,7 @@ const worker = new Worker(
         : await aiService.generateForContent(
             content,
             post.creationMode === "manual" ? post.customPrompt : "",
+            ...(preferences ? [preferences] : []),
           );
       if (!result.text?.trim()) throw new Error("AI empty response");
       if (

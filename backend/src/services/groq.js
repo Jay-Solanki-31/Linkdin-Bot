@@ -68,7 +68,7 @@ export default async function generateAIResponse({
       usage: data?.usage,
     };
   } catch (err) {
-    const code = err?.code === "ECONNABORTED" ? "AI_TIMEOUT" : /no usable text/i.test(err?.message || "") ? "AI_EMPTY_RESPONSE" : "AI_GENERATION_FAILED";
+    const code = err?.response?.status === 429 ? "AI_RATE_LIMIT" : err?.code === "ECONNABORTED" ? "AI_TIMEOUT" : /no usable text/i.test(err?.message || "") ? "AI_EMPTY_RESPONSE" : "AI_GENERATION_FAILED";
     console.error("[Groq] Generation failed", { code, status: err?.response?.status });
     throw Object.assign(new Error(code), { code });
   }

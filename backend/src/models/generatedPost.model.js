@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { preferencesSchema } from "./aiWritingPreferences.model.js";
 
 const GeneratedPostSchema = new mongoose.Schema({
   articleId: {
@@ -20,6 +21,8 @@ const GeneratedPostSchema = new mongoose.Schema({
   scheduleVersion: { type: Number, default: 0 },
   generationJobId: String,
   generationRunId: String,
+  writingPreferencesAttempt: String,
+  writingPreferencesSnapshot: { type: preferencesSchema, default: undefined },
   errorCode: String,
   lastRecoveryAt: Date,
   recoveryIntent: { id: String, state: { type: String, enum: ["pending", "running", "completed", "failed"] }, requestedAt: Date },

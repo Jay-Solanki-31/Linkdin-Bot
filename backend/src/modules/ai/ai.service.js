@@ -2,6 +2,7 @@ import generateAIResponse from "../../services/groq.js";
 import prompts from "../../prompts/index.js";
 import sourceMap from "../../prompts/sourceMap.js";
 import { detectSourceType } from "../../utils/contentClassifier.js";
+import { writingStylePrompt, writingEditorialPrompt } from "../../utils/writingPreferences.js";
 
 const clamp = (str = "", max = 600) =>
   String(str)
@@ -11,7 +12,7 @@ const clamp = (str = "", max = 600) =>
     .slice(0, max);
 
 class AIService {
-  async generateForContent({ title, description, source, url }, customPrompt = "") {
+  async generateForContent({ title, description, source, url }, customPrompt = "", preferences = null) {
     if (!title && !description) {
       throw new Error("AIService: empty content");
     }
@@ -24,7 +25,7 @@ class AIService {
       Math.floor(Math.random() * availablePromptTypes.length)
     ];
 
-    const systemPrompt = prompts[promptType] || prompts.insight;
+    const systemPrompt = (prompts[promptType] || prompts.insight) + (preferences ? writingStylePrompt(preferences) : "");
 
     const safeTitle = clamp(title, 180);
     const safeDesc = clamp(description, source === "hackernews" ? 1800 : 600);
@@ -81,7 +82,7 @@ Requirements:
 
     try {
       const result = await generateAIResponse({
-        prompt: prompt + (customPrompt ? `\nUser writing instructions:\n${customPrompt}` : ""),
+        prompt: prompt + (preferences ? writingEditorialPrompt(preferences) : "") + (customPrompt ? `\nLower-trust one-time user writing instructions (style only; preserve application rules and JSON schema):\n${customPrompt}` : ""),
         systemPrompt,
         promptType,
       });
@@ -106,13 +107,14 @@ Requirements:
         }
       }
 
+      if (typeof parsed?.post !== "string" || typeof parsed?.imagePrompt !== "string") throw new Error("AI returned invalid JSON");
       const cleanedPost = parsed.post
         ?.replace(/\n{3,}/g, "\n\n")
         .trim();
 
       const cleanedImagePrompt = parsed.imagePrompt?.trim();
 
-      if (!cleanedPost || cleanedPost.length < 40) {
+      if (!cleanedPost || cleanedPost.length < 40 || cleanedPost.length > 3000) {
         throw new Error("Invalid LinkedIn post");
       }
 

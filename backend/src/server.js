@@ -21,6 +21,7 @@ import slotAllocatorRoutes from "./routes/slotAllocator.routes.js";
 import testRoutes from "./routes/test.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
 import studioRoutes from "./routes/studio.routes.js";
+import writingPreferencesRoutes from "./routes/writingPreferences.routes.js";
 import publishingHealthRoutes from "./routes/publishingHealth.routes.js";
 
 
@@ -91,6 +92,7 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/publishing-health", publishingHealthRoutes);
 app.use("/api/auth/linkedin", linkedinAuthRoutes);
 app.use("/api", studioRoutes);
+app.use("/api/ai-writing-preferences", writingPreferencesRoutes);
 app.use("/api/ai-posts", aiPostsRoutes);
 app.use("/api/publisher", publisherRoutes);
 app.use("/admin/queues", dashboardAuth, bullBoard.getRouter());

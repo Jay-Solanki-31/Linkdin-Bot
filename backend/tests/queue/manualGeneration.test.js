@@ -7,7 +7,9 @@ const m = vi.hoisted(() => ({
   image: vi.fn(),
   publish: vi.fn(),
   update: vi.fn(),
+  preferences: vi.fn(),
 }));
+vi.mock("../../src/services/writingPreferences.service.js", () => ({ loadWritingPreferences: m.preferences }));
 vi.mock("bullmq", () => ({
   Worker: vi.fn().mockImplementation((name, fn) => {
     m.process = fn;
@@ -51,6 +53,7 @@ const manual = {
 };
 beforeEach(() => {
   vi.resetAllMocks();
+  m.preferences.mockResolvedValue(null);
   m.generate.mockResolvedValue({
     text: "A useful LinkedIn post",
     imagePrompt: "A professional illustration",
@@ -66,7 +69,7 @@ it("generates a custom topic and prompt as a draft without publishing", async ()
     expect.objectContaining({ title: "Streams" }),
     "Be concise",
   );
-  expect(m.update.mock.calls[1][1].$set.status).toBe("draft");
+  expect(m.update.mock.calls[2][1].$set.status).toBe("draft");
   expect(m.publish).not.toHaveBeenCalled();
 });
 it("generates only from an owner-filtered fetched article", async () => {
@@ -82,12 +85,12 @@ it("generates only from an owner-filtered fetched article", async () => {
 it("keeps text when the image provider returns HTTP 402", async () => {
   m.image.mockRejectedValue(new Error("Image API responded with status: 402"));
   await m.process(job);
-  expect(m.update.mock.calls[1][1].$set).toMatchObject({
+  expect(m.update.mock.calls[2][1].$set).toMatchObject({
     text: "A useful LinkedIn post",
     imageStatus: "failed",
     status: "draft",
   });
-  expect(m.update.mock.calls[1][1].$push.activity.$each).toEqual(
+  expect(m.update.mock.calls[2][1].$push.activity.$each).toEqual(
     expect.arrayContaining([
       expect.objectContaining({ eventType: "image_unavailable_text_fallback" }),
     ]),
@@ -142,4 +145,37 @@ it("does not mark another worker's post failed when the claim fails", async () =
   m.claim.mockRejectedValue(new Error("database unavailable"));
   await expect(m.process(job)).rejects.toThrow("AI_GENERATION_FAILED");
   expect(m.update).not.toHaveBeenCalled();
+});
+it.each(["A", "B"])("loads only verified account %s preferences", async account => {
+  const preferences = { tone: account === "A" ? "technical" : "casual" };
+  m.preferences.mockResolvedValue(preferences);
+  await m.process({ ...job, data: { postId: "p", linkedinMemberUrn: account } });
+  expect(m.claim.mock.calls[0][0].linkedinMemberUrn).toBe(account);
+  expect(m.preferences).toHaveBeenCalledWith(account);
+  expect(m.generate).toHaveBeenCalledWith(expect.anything(), "Be concise", preferences);
+  expect(m.update.mock.calls[0][0].linkedinMemberUrn).toBe(account);
+});
+it("does not load preferences when the ownership claim finds no post", async () => {
+  m.claim.mockResolvedValue(null);
+  await m.process(job);
+  expect(m.preferences).not.toHaveBeenCalled();
+});
+it("reuses validated snapshots across retries despite settings changes", async () => {
+  const snapshot = { tone: "professional", length: "short", emoji: "none", hashtags: true, language: "en", topics: [], customInstructions: "" };
+  m.claim.mockResolvedValue({ ...manual, writingPreferencesAttempt: "ai-p", writingPreferencesSnapshot: snapshot });
+  await m.process({ ...job, attemptsMade: 1 });
+  expect(m.preferences).not.toHaveBeenCalled();
+  expect(m.generate).toHaveBeenCalledWith(expect.anything(), "Be concise", snapshot);
+});
+it("keeps a missing-document snapshot on retry", async () => {
+  m.claim.mockResolvedValue({ ...manual, writingPreferencesAttempt: "ai-p", writingPreferencesSnapshot: null });
+  await m.process({ ...job, attemptsMade: 1 });
+  expect(m.preferences).not.toHaveBeenCalled();
+  expect(m.generate).toHaveBeenCalledWith(expect.anything(), "Be concise");
+});
+it("loads fresh settings for explicit regeneration", async () => {
+  m.claim.mockResolvedValue({ ...manual, writingPreferencesAttempt: "old" });
+  await m.process({ ...job, data: { ...job.data, recoveryId: "new-attempt" } });
+  expect(m.preferences).toHaveBeenCalledWith("A");
+  expect(m.update.mock.calls[0][1].$set.writingPreferencesAttempt).toBe("new-attempt");
 });
